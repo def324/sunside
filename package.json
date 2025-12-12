@@ -1,0 +1,33 @@
+{
+  "name": "sunside",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "prepare:airports": "tsx scripts/prepare-airports.ts",
+    "prepare:map": "tsx scripts/prepare-map.ts",
+    "build:map-svg": "tsx scripts/build-map-svg.ts"
+  },
+  "dependencies": {
+    "luxon": "^3.5.0",
+    "suncalc": "^1.9.0",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "csv-parse": "^6.1.0",
+    "topojson-client": "^3.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "tz-lookup": "^6.1.25",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  }
+}
