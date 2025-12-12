@@ -1,13 +1,15 @@
 <script lang="ts">
   import airportsData from '../data/airports.json';
+  import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
   import { createFlightPlan, sampleFlight, type Airport } from '../core/flight';
   import { projectEquirectangular } from '../core/geo';
-  import { getSubsolarPoint, sampleTerminatorCircle } from '../core/sun';
+  import { computeDayNightOverlay } from '../core/daynight';
   import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
 
   type AirportRecord = (typeof airportsData)[number];
 
   const airports: AirportRecord[] = airportsData;
+  const airportSearchIndex = buildAirportSearchIndex(airports);
 
   const SAMPLE_COUNT = 30;
   const MAP_WIDTH = 1800;
@@ -44,7 +46,7 @@
   let sunProjected: { x: number; y: number } | null = null;
   let dayPath = '';
   let nightPath = '';
-  let terminatorPoints = '';
+  let terminatorPath = '';
   let pendingRaf: number | null = null;
   let viewX = 0;
   let viewY = 0;
@@ -71,20 +73,8 @@
     return { year, month, day, hour, minute };
   }
 
-  function matchesQuery(a: AirportRecord, q: string) {
-    if (!q) return true;
-    const needle = q.toLowerCase();
-    return (
-      (a.iata && a.iata.toLowerCase().includes(needle)) ||
-      (a.icao && a.icao.toLowerCase().includes(needle)) ||
-      (a.ident && a.ident.toLowerCase().includes(needle)) ||
-      (a.name && a.name.toLowerCase().includes(needle)) ||
-      (a.city && a.city.toLowerCase().includes(needle))
-    );
-  }
-
-  $: depOptions = depQuery.trim() ? airports.filter((a) => matchesQuery(a, depQuery)).slice(0, 20) : [];
-  $: arrOptions = arrQuery.trim() ? airports.filter((a) => matchesQuery(a, arrQuery)).slice(0, 20) : [];
+  $: depOptions = depQuery.trim() ? searchAirports(airportSearchIndex, depQuery, 20) : [];
+  $: arrOptions = arrQuery.trim() ? searchAirports(airportSearchIndex, arrQuery, 20) : [];
 
   $: {
     error = '';
@@ -190,67 +180,12 @@
   const airportLabel = (a: AirportRecord) => `${a.iata ?? a.icao ?? a.ident} — ${a.name}`;
   const airportCode = (a: AirportRecord) => a.iata ?? a.icao ?? a.ident;
 
-  function pointInPolygon(point: { x: number; y: number }, polygon: Array<{ x: number; y: number }>) {
-    if (polygon.length < 3) return false;
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
-      const xi = polygon[i].x;
-      const yi = polygon[i].y;
-      const xj = polygon[j].x;
-      const yj = polygon[j].y;
-      const intersect = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
-      if (intersect) inside = !inside;
-    }
-    return inside;
-  }
-
-  function toPath(points: Array<{ x: number; y: number }>) {
-    if (!points.length) return '';
-    const [first, ...rest] = points;
-    const body = rest.map((p) => `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-    return `M ${first.x.toFixed(1)} ${first.y.toFixed(1)} ${body} Z`;
-  }
-
-  function unwrapProjected(points: Array<{ x: number; y: number }>) {
-    if (!points.length) return points;
-    const unwrapped: Array<{ x: number; y: number }> = [{ ...points[0] }];
-    for (let i = 1; i < points.length; i += 1) {
-      const prev = unwrapped[i - 1];
-      let x = points[i].x;
-      const dx = x - prev.x;
-      if (dx > MAP_WIDTH / 2) x -= MAP_WIDTH;
-      if (dx < -MAP_WIDTH / 2) x += MAP_WIDTH;
-      unwrapped.push({ x, y: points[i].y });
-    }
-    return unwrapped;
-  }
-
   function updateSunGraphics(timestamp: number) {
-    const subsolar = getSubsolarPoint(timestamp);
-    sunProjected = projectEquirectangular(subsolar, MAP_WIDTH, MAP_HEIGHT);
-
-    const circle = sampleTerminatorCircle(subsolar, 361);
-    const projected = circle.map((p) => projectEquirectangular(p, MAP_WIDTH, MAP_HEIGHT));
-    const unwrapped = unwrapProjected(projected);
-    terminatorPoints = unwrapped.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-
-    if (!unwrapped.length) {
-      dayPath = '';
-      nightPath = '';
-      return;
-    }
-
-    const circlePath = toPath(unwrapped);
-    const rect = `M 0 0 L ${MAP_WIDTH} 0 L ${MAP_WIDTH} ${MAP_HEIGHT} L 0 ${MAP_HEIGHT} Z`;
-    const sunInside = sunProjected ? pointInPolygon(sunProjected, unwrapped) : true;
-
-    if (sunInside) {
-      dayPath = circlePath;
-      nightPath = `${rect} ${circlePath}`;
-    } else {
-      nightPath = circlePath;
-      dayPath = `${rect} ${circlePath}`;
-    }
+    const overlay = computeDayNightOverlay(timestamp, MAP_WIDTH, MAP_HEIGHT);
+    sunProjected = overlay.sun;
+    terminatorPath = overlay.terminatorPath;
+    dayPath = overlay.dayPath;
+    nightPath = overlay.nightPath;
   }
 </script>
 
@@ -396,13 +331,13 @@
         <g transform={`translate(${viewX} ${viewY}) scale(${viewScale})`} clip-path="url(#map-clip)">
           <image href="/map.svg" x="0" y="0" width="1800" height="900" />
           {#if nightPath}
-            <path class="night" d={nightPath} fill-rule="evenodd" />
+            <path class="night" d={nightPath} />
           {/if}
           {#if dayPath}
             <path class="day" d={dayPath} />
           {/if}
-          {#if terminatorPoints}
-            <polyline class="terminator" points={terminatorPoints} />
+          {#if terminatorPath}
+            <path class="terminator" d={terminatorPath} />
           {/if}
           {#if samples.length}
             <polyline class="route" points={routePoints} />
@@ -478,11 +413,15 @@
   input[type='time'],
   input[type='range'] {
     width: 100%;
+    box-sizing: border-box;
     padding: 8px;
     border-radius: 8px;
     border: 1px solid #24344c;
     background: #0d182b;
     color: #e6edf5;
+  }
+  input[type='range'] {
+    padding: 0;
   }
   .grid {
     display: grid;
