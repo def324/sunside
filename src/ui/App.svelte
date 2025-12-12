@@ -57,24 +57,25 @@
   let terminatorPath = '';
   let pendingRaf: number | null = null;
   let viewX = 0;
-  let viewY = 0;
-  let viewScale = 1;
-  let isPanning = false;
-  let panStart: { x: number; y: number } | null = null;
-  let isPlaying = false;
-  let playSpeed = 2;
-  let playRaf: number | null = null;
-  let lastPlayTs: number | null = null;
+	  let viewY = 0;
+	  let viewScale = 1;
+	  let isPanning = false;
+	  let panStart: { x: number; y: number; startViewX: number; startViewY: number } | null = null;
+	  let isPlaying = false;
+	  let playSpeed = 2;
+	  let playRaf: number | null = null;
+	  let lastPlayTs: number | null = null;
   const PLAYBACK_DURATION_SECONDS = 30;
   const PLAYBACK_FPS = 30;
-  const numberFmt = new Intl.NumberFormat(undefined);
-  const MIN_SCALE = 1;
-  const MAX_SCALE = 6;
-  let mapWrapEl: HTMLDivElement | null = null;
-  const activePointers = new Map<number, { x: number; y: number }>();
-  let pinchStart:
-    | {
-        distance: number;
+	  const numberFmt = new Intl.NumberFormat(undefined);
+	  const MIN_SCALE = 1;
+	  const MAX_SCALE = 6;
+	  let mapWrapEl: HTMLDivElement | null = null;
+	  let mapSvgEl: SVGSVGElement | null = null;
+	  const activePointers = new Map<number, { x: number; y: number }>();
+	  let pinchStart:
+	    | {
+	        distance: number;
         startScale: number;
         startViewX: number;
         startViewY: number;
@@ -231,17 +232,30 @@
       return;
     }
     if (t >= 0.999) t = 0;
-    isPlaying = true;
-    lastPlayTs = null;
-    playRaf = requestAnimationFrame(tickPlayback);
-  }
+	    isPlaying = true;
+	    lastPlayTs = null;
+	    playRaf = requestAnimationFrame(tickPlayback);
+	  }
 
-  function onWheel(event: WheelEvent) {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const cx = event.clientX - rect.left;
-    const cy = event.clientY - rect.top;
-    zoomByWheelDelta(event.deltaY, cx, cy, event.ctrlKey);
-  }
+	  function getSvgMetrics(): { rect: DOMRect; sx: number; sy: number } | null {
+	    if (!mapSvgEl) return null;
+	    const rect = mapSvgEl.getBoundingClientRect();
+	    if (rect.width <= 0 || rect.height <= 0) return null;
+	    return { rect, sx: MAP_WIDTH / rect.width, sy: MAP_HEIGHT / rect.height };
+	  }
+
+	  function clampToMap(x: number, y: number): { x: number; y: number } {
+	    return { x: Math.min(MAP_WIDTH, Math.max(0, x)), y: Math.min(MAP_HEIGHT, Math.max(0, y)) };
+	  }
+
+	  function onWheel(event: WheelEvent) {
+	    const metrics = getSvgMetrics();
+	    if (!metrics) return;
+	    const rawX = (event.clientX - metrics.rect.left) * metrics.sx;
+	    const rawY = (event.clientY - metrics.rect.top) * metrics.sy;
+	    const { x, y } = clampToMap(rawX, rawY);
+	    zoomByWheelDelta(event.deltaY, x, y, event.ctrlKey);
+	  }
 
   function clampScale(scale: number): number {
     return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
@@ -278,74 +292,75 @@
     zoomByFactor(factor, cx, cy);
   }
 
-  function zoomFromButtons(direction: 'in' | 'out') {
-    if (!mapWrapEl) return;
-    const rect = mapWrapEl.getBoundingClientRect();
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const factor = direction === 'in' ? 1.25 : 1 / 1.25;
-    zoomByFactor(factor, cx, cy);
-  }
+	  function zoomFromButtons(direction: 'in' | 'out') {
+	    const factor = direction === 'in' ? 1.25 : 1 / 1.25;
+	    zoomByFactor(factor, MAP_WIDTH / 2, MAP_HEIGHT / 2);
+	  }
 
-  function onPointerDown(event: PointerEvent) {
-    event.preventDefault();
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+	  function onPointerDown(event: PointerEvent) {
+	    event.preventDefault();
+	    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
-    if (activePointers.size === 1) {
-      isPanning = true;
-      panStart = { x: event.clientX - viewX, y: event.clientY - viewY };
-      pinchStart = null;
-      return;
-    }
+	    if (activePointers.size === 1) {
+	      isPanning = true;
+	      panStart = { x: event.clientX, y: event.clientY, startViewX: viewX, startViewY: viewY };
+	      pinchStart = null;
+	      return;
+	    }
 
-    if (activePointers.size === 2 && mapWrapEl) {
-      isPanning = false;
-      panStart = null;
-      const pts = [...activePointers.values()];
-      const rect = mapWrapEl.getBoundingClientRect();
-      const p1 = { x: pts[0].x - rect.left, y: pts[0].y - rect.top };
-      const p2 = { x: pts[1].x - rect.left, y: pts[1].y - rect.top };
-      const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-      const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-      pinchStart = {
-        distance: dist || 1,
-        startScale: viewScale,
-        startViewX: viewX,
-        startViewY: viewY,
-        startCenter: center,
-        pre: { x: (center.x - viewX) / viewScale, y: (center.y - viewY) / viewScale }
-      };
-    }
-  }
+	    if (activePointers.size === 2) {
+	      const metrics = getSvgMetrics();
+	      if (!metrics) return;
+	      isPanning = false;
+	      panStart = null;
+	      const pts = [...activePointers.values()];
+	      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+	      const centerClient = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+	      const rawCenterX = (centerClient.x - metrics.rect.left) * metrics.sx;
+	      const rawCenterY = (centerClient.y - metrics.rect.top) * metrics.sy;
+	      const center = clampToMap(rawCenterX, rawCenterY);
+	      pinchStart = {
+	        distance: dist,
+	        startScale: viewScale,
+	        startViewX: viewX,
+	        startViewY: viewY,
+	        startCenter: center,
+	        pre: { x: (center.x - viewX) / viewScale, y: (center.y - viewY) / viewScale }
+	      };
+	    }
+	  }
 
-  function onPointerMove(event: PointerEvent) {
-    if (!mapWrapEl) return;
-    if (activePointers.has(event.pointerId)) {
-      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-    }
+	  function onPointerMove(event: PointerEvent) {
+	    if (activePointers.has(event.pointerId)) {
+	      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+	    }
 
-    if (pinchStart && activePointers.size >= 2) {
-      const pts = [...activePointers.values()];
-      const rect = mapWrapEl.getBoundingClientRect();
-      const p1 = { x: pts[0].x - rect.left, y: pts[0].y - rect.top };
-      const p2 = { x: pts[1].x - rect.left, y: pts[1].y - rect.top };
-      const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
-      const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1;
-      const rawScale = pinchStart.startScale * (dist / pinchStart.distance);
-      const newScale = clampScale(rawScale);
-      viewScale = newScale;
-      viewX = center.x - pinchStart.pre.x * viewScale;
+	    if (pinchStart && activePointers.size >= 2) {
+	      const metrics = getSvgMetrics();
+	      if (!metrics) return;
+	      const pts = [...activePointers.values()];
+	      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+	      const centerClient = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+	      const rawCenterX = (centerClient.x - metrics.rect.left) * metrics.sx;
+	      const rawCenterY = (centerClient.y - metrics.rect.top) * metrics.sy;
+	      const center = clampToMap(rawCenterX, rawCenterY);
+	      const rawScale = pinchStart.startScale * (dist / pinchStart.distance);
+	      const newScale = clampScale(rawScale);
+	      viewScale = newScale;
+	      viewX = center.x - pinchStart.pre.x * viewScale;
       viewY = center.y - pinchStart.pre.y * viewScale;
       clampPan();
       return;
-    }
+	    }
 
-    if (!isPanning || !panStart) return;
-    viewX = event.clientX - panStart.x;
-    viewY = event.clientY - panStart.y;
-    clampPan();
-  }
+	    if (!isPanning || !panStart) return;
+	    const metrics = getSvgMetrics();
+	    if (!metrics) return;
+	    viewX = panStart.startViewX + (event.clientX - panStart.x) * metrics.sx;
+	    viewY = panStart.startViewY + (event.clientY - panStart.y) * metrics.sy;
+	    clampPan();
+	  }
 
   function onPointerUp(event?: PointerEvent) {
     isPanning = false;
@@ -697,7 +712,7 @@
           −
         </button>
       </div>
-      <svg viewBox="0 0 1800 900" aria-label="World map">
+	      <svg bind:this={mapSvgEl} viewBox="0 0 1800 900" aria-label="World map">
         <defs>
           <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stop-color="#ffd166" stop-opacity="0.5" />
@@ -738,12 +753,13 @@
 </main>
 
 <style>
-  :global(body) {
-    margin: 0;
-    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-    background: #0c1426;
-    color: #e6edf5;
-  }
+	  :global(body) {
+	    margin: 0;
+	    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+	    background: #0c1426;
+	    color: #e6edf5;
+	    color-scheme: dark;
+	  }
   main.page {
     max-width: 1200px;
     margin: 0 auto;
@@ -982,23 +998,41 @@
     gap: 6px;
     color: #d4deed;
   }
-  input[type='search'],
-  input[type='date'],
-  input[type='time'],
-  input[type='range'] {
-	    width: 100%;
-	    box-sizing: border-box;
-	    padding: 8px;
-	    border-radius: 8px;
-	    border: 1px solid #24344c;
-	    background: #0d182b;
-	    color: #e6edf5;
-	    font: inherit;
-	  }
+	  input[type='search'],
 	  input[type='date'],
-	  input[type='time'] {
-	    font-variant-numeric: proportional-nums;
-	  }
+	  input[type='time'],
+	  input[type='range'] {
+		    width: 100%;
+		    box-sizing: border-box;
+		    padding: 8px;
+		    border-radius: 8px;
+		    border: 1px solid #24344c;
+		    background: #0d182b;
+		    color: #e6edf5;
+		    font: inherit;
+		  }
+		  input[type='search'],
+		  input[type='date'],
+		  input[type='time'] {
+		    height: 40px;
+		  }
+		  input[type='date'],
+		  input[type='time'] {
+		    font-variant-numeric: proportional-nums;
+		  }
+		  input[type='date'],
+		  input[type='time'] {
+		    color-scheme: dark;
+		  }
+		  input[type='date']::-webkit-calendar-picker-indicator,
+		  input[type='time']::-webkit-calendar-picker-indicator {
+		    filter: invert(1);
+		    opacity: 0.85;
+		  }
+		  input[type='date']::-webkit-calendar-picker-indicator:hover,
+		  input[type='time']::-webkit-calendar-picker-indicator:hover {
+		    opacity: 1;
+		  }
 	  input[type='range'] {
 	    padding: 0;
 	    accent-color: #4fd1ff;
@@ -1070,7 +1104,7 @@
 	  .map-wrap {
 	    background: #0e1930;
 	    border-radius: 12px;
-	    padding: 8px;
+	    padding: 0;
 	    border: 1px solid #24344c;
 	    overflow: hidden;
 	    position: relative;
