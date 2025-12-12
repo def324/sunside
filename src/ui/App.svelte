@@ -2,8 +2,9 @@
   import airportsData from '../data/airports.json';
   import { DateTime } from 'luxon';
   import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
-  import { createFlightPlan, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
+  import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
   import { computeDayNightOverlay } from '../core/daynight';
+  import { createGreatCirclePath } from '../core/geo';
   import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
 
   type AirportRecord = (typeof airportsData)[number];
@@ -16,7 +17,11 @@
   const MAP_HEIGHT = 900;
 
   const defaultDeparture = airports.find((a) => a.iata === 'LAX') ?? airports[0];
-  const defaultArrival = airports.find((a) => a.iata === 'JFK') ?? airports[1];
+  const defaultArrival =
+    airports.find((a) => a.iata === 'LHR') ??
+    airports.find((a) => a.iata === 'CDG') ??
+    airports.find((a) => a.iata === 'JFK') ??
+    airports[1];
 
   let departureAirport: AirportRecord = defaultDeparture;
   let arrivalAirport: AirportRecord = defaultArrival;
@@ -26,14 +31,17 @@
   let showArrList = false;
 
   const today = new Date();
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
   const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
   const pad = (n: number) => n.toString().padStart(2, '0');
   const toTimeStr = (h: number, m: number) => `${pad(h)}:${pad(m)}`;
 
-  let departureDate = toDateStr(today);
-  let departureTime = toTimeStr(9, 0);
-  let arrivalDate = toDateStr(today);
-  let arrivalTime = toTimeStr(15, 0);
+	  let departureDate = toDateStr(today);
+	  let departureTime = toTimeStr(16, 0);
+	  let arrivalDate = toDateStr(tomorrow);
+	  let arrivalTime = toTimeStr(10, 0);
+	  let autoEstimateArrival = true;
+	  let lastArrivalEstimateKey = '';
 
   let error = '';
   let flightPlan = null as ReturnType<typeof createFlightPlan> | null;
@@ -54,12 +62,26 @@
   let isPanning = false;
   let panStart: { x: number; y: number } | null = null;
   let isPlaying = false;
-  let playSpeed = 1;
+  let playSpeed = 2;
   let playRaf: number | null = null;
   let lastPlayTs: number | null = null;
   const PLAYBACK_DURATION_SECONDS = 30;
   const PLAYBACK_FPS = 30;
   const numberFmt = new Intl.NumberFormat(undefined);
+  const MIN_SCALE = 1;
+  const MAX_SCALE = 6;
+  let mapWrapEl: HTMLDivElement | null = null;
+  const activePointers = new Map<number, { x: number; y: number }>();
+  let pinchStart:
+    | {
+        distance: number;
+        startScale: number;
+        startViewX: number;
+        startViewY: number;
+        startCenter: { x: number; y: number };
+        pre: { x: number; y: number };
+      }
+    | null = null;
 
   function toAirport(a: AirportRecord): Airport {
     return {
@@ -80,14 +102,45 @@
     return { year, month, day, hour, minute };
   }
 
-  $: depOptions = depQuery.trim() ? searchAirports(airportSearchIndex, depQuery, 20) : [];
-  $: arrOptions = arrQuery.trim() ? searchAirports(airportSearchIndex, arrQuery, 20) : [];
-
-  $: {
-    error = '';
-    flightPlan = null;
-    routeSamples = [];
+  function applyArrivalEstimate() {
     try {
+      const depZ = toZonedDateTime(parseLocal(departureDate, departureTime), departureAirport.tz);
+      const path = createGreatCirclePath(toAirport(departureAirport).location, toAirport(arrivalAirport).location);
+      const durationMinutes = estimateFlightDurationMinutes(path.distanceMeters, { roundToMinutes: 30 });
+      const arrivalUtcMillis = depZ.millis + durationMinutes * 60_000;
+      const arrivalDt = DateTime.fromMillis(arrivalUtcMillis, { zone: arrivalAirport.tz });
+      const nextArrivalDate = arrivalDt.toISODate() ?? arrivalDate;
+      const nextArrivalTime = arrivalDt.toFormat('HH:mm');
+      if (arrivalDate !== nextArrivalDate) arrivalDate = nextArrivalDate;
+      if (arrivalTime !== nextArrivalTime) arrivalTime = nextArrivalTime;
+    } catch {}
+  }
+
+	  function onAutoEstimateArrivalChange(event: Event) {
+	    const input = event.currentTarget as HTMLInputElement;
+	    autoEstimateArrival = input.checked;
+	  }
+
+	  $: depOptions = depQuery.trim() ? searchAirports(airportSearchIndex, depQuery, 20) : [];
+	  $: arrOptions = arrQuery.trim() ? searchAirports(airportSearchIndex, arrQuery, 20) : [];
+
+	  $: {
+	    if (!autoEstimateArrival) {
+	      lastArrivalEstimateKey = '';
+	    } else {
+	      const key = `${departureAirport.id}|${arrivalAirport.id}|${departureDate}|${departureTime}`;
+	      if (key !== lastArrivalEstimateKey) {
+	        lastArrivalEstimateKey = key;
+	        applyArrivalEstimate();
+	      }
+	    }
+	  }
+
+	  $: {
+	    error = '';
+	    flightPlan = null;
+	    routeSamples = [];
+	    try {
       const depLocal = parseLocal(departureDate, departureTime);
       const arrLocal = parseLocal(arrivalDate, arrivalTime);
       const depZ = toZonedDateTime(depLocal, departureAirport.tz);
@@ -187,24 +240,107 @@
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const cx = event.clientX - rect.left;
     const cy = event.clientY - rect.top;
-    const preX = (cx - viewX) / viewScale;
-    const preY = (cy - viewY) / viewScale;
-    const delta = -event.deltaY * 0.001;
-    const newScale = Math.min(4, Math.max(1, viewScale * (1 + delta)));
-    viewScale = newScale;
+    zoomByWheelDelta(event.deltaY, cx, cy, event.ctrlKey);
+  }
+
+  function clampScale(scale: number): number {
+    return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+  }
+
+  function clampPan() {
+    const minX = -MAP_WIDTH * (viewScale - 1);
+    const minY = -MAP_HEIGHT * (viewScale - 1);
+    viewX = Math.min(0, Math.max(minX, viewX));
+    viewY = Math.min(0, Math.max(minY, viewY));
+  }
+
+  function zoomToScale(newScale: number, cx: number, cy: number, start?: { scale: number; viewX: number; viewY: number }) {
+    const fromScale = start?.scale ?? viewScale;
+    const fromX = start?.viewX ?? viewX;
+    const fromY = start?.viewY ?? viewY;
+    const clamped = clampScale(newScale);
+    const preX = (cx - fromX) / fromScale;
+    const preY = (cy - fromY) / fromScale;
+    viewScale = clamped;
     viewX = cx - preX * viewScale;
     viewY = cy - preY * viewScale;
     clampPan();
   }
 
+  function zoomByFactor(factor: number, cx: number, cy: number) {
+    zoomToScale(viewScale * factor, cx, cy);
+  }
+
+  function zoomByWheelDelta(deltaY: number, cx: number, cy: number, isPinch: boolean) {
+    const dy = Math.max(-200, Math.min(200, deltaY));
+    const intensity = isPinch ? 0.0035 : 0.0015;
+    const factor = Math.exp(-dy * intensity);
+    zoomByFactor(factor, cx, cy);
+  }
+
+  function zoomFromButtons(direction: 'in' | 'out') {
+    if (!mapWrapEl) return;
+    const rect = mapWrapEl.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const factor = direction === 'in' ? 1.25 : 1 / 1.25;
+    zoomByFactor(factor, cx, cy);
+  }
+
   function onPointerDown(event: PointerEvent) {
     event.preventDefault();
-    isPanning = true;
-    panStart = { x: event.clientX - viewX, y: event.clientY - viewY };
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (activePointers.size === 1) {
+      isPanning = true;
+      panStart = { x: event.clientX - viewX, y: event.clientY - viewY };
+      pinchStart = null;
+      return;
+    }
+
+    if (activePointers.size === 2 && mapWrapEl) {
+      isPanning = false;
+      panStart = null;
+      const pts = [...activePointers.values()];
+      const rect = mapWrapEl.getBoundingClientRect();
+      const p1 = { x: pts[0].x - rect.left, y: pts[0].y - rect.top };
+      const p2 = { x: pts[1].x - rect.left, y: pts[1].y - rect.top };
+      const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+      pinchStart = {
+        distance: dist || 1,
+        startScale: viewScale,
+        startViewX: viewX,
+        startViewY: viewY,
+        startCenter: center,
+        pre: { x: (center.x - viewX) / viewScale, y: (center.y - viewY) / viewScale }
+      };
+    }
   }
 
   function onPointerMove(event: PointerEvent) {
+    if (!mapWrapEl) return;
+    if (activePointers.has(event.pointerId)) {
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    if (pinchStart && activePointers.size >= 2) {
+      const pts = [...activePointers.values()];
+      const rect = mapWrapEl.getBoundingClientRect();
+      const p1 = { x: pts[0].x - rect.left, y: pts[0].y - rect.top };
+      const p2 = { x: pts[1].x - rect.left, y: pts[1].y - rect.top };
+      const center = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1;
+      const rawScale = pinchStart.startScale * (dist / pinchStart.distance);
+      const newScale = clampScale(rawScale);
+      viewScale = newScale;
+      viewX = center.x - pinchStart.pre.x * viewScale;
+      viewY = center.y - pinchStart.pre.y * viewScale;
+      clampPan();
+      return;
+    }
+
     if (!isPanning || !panStart) return;
     viewX = event.clientX - panStart.x;
     viewY = event.clientY - panStart.y;
@@ -215,15 +351,12 @@
     isPanning = false;
     panStart = null;
     if (event) {
+      activePointers.delete(event.pointerId);
       (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
     }
-  }
-
-  function clampPan() {
-    const minX = -MAP_WIDTH * (viewScale - 1);
-    const minY = -MAP_HEIGHT * (viewScale - 1);
-    viewX = Math.min(0, Math.max(minX, viewX));
-    viewY = Math.min(0, Math.max(minY, viewY));
+    if (activePointers.size < 2) {
+      pinchStart = null;
+    }
   }
 
   const airportLabel = (a: AirportRecord) => `${a.iata ?? a.icao ?? a.ident} — ${a.name}`;
@@ -277,19 +410,19 @@
     return 'Sun behind';
   }
 
-  type TimelineInfo = {
-    routeLabel: string;
-    utcDate: string;
-    utcTime: string;
-    localTime: string;
-    localOffset: string;
-    elapsed: string;
-    remaining: string;
-    status: 'day' | 'twilight' | 'night';
-    statusLabel: string;
-    directionLabel: string | null;
-    progressPct: number;
-  };
+	  type TimelineInfo = {
+	    routeLabel: string;
+	    utcDate: string;
+	    utcTime: string;
+	    localTime: string;
+	    localOffset: string;
+	    elapsed: string;
+	    remaining: string;
+	    status: 'day' | 'twilight' | 'night';
+	    statusLabel: string;
+	    directionLabel: string | null;
+	    progressPct: number;
+	  };
 
   let timelineInfo: TimelineInfo | null = null;
   $: {
@@ -304,14 +437,14 @@
         .plus({ minutes: offsetMinutes })
         .toLocaleString(DateTime.TIME_SIMPLE);
       const localOffset = utcOffsetLabel(offsetMinutes);
-      const elapsedMinutes = Math.max(0, Math.round((utcMillis - flightPlan.departureUtc) / 60000));
-      const remainingMinutes = Math.max(0, flightPlan.durationMinutes - elapsedMinutes);
-      const status = currentSample.sun.status;
-      const directionLabel = status === 'night' ? null : sideLabel(currentSample.sun.side);
+	      const elapsedMinutes = Math.max(0, Math.round((utcMillis - flightPlan.departureUtc) / 60000));
+	      const remainingMinutes = Math.max(0, flightPlan.durationMinutes - elapsedMinutes);
+	      const status = currentSample.sun.status;
+	      const directionLabel = status === 'night' ? null : sideLabel(currentSample.sun.side);
 
-      timelineInfo = {
-        routeLabel: `${airportCode(departureAirport)} → ${airportCode(arrivalAirport)}`,
-        utcDate,
+	      timelineInfo = {
+	        routeLabel: `${airportCode(departureAirport)} → ${airportCode(arrivalAirport)}`,
+	        utcDate,
         utcTime,
         localTime,
         localOffset,
@@ -364,14 +497,14 @@
                   <button
                     type="button"
                     class:selected={option === departureAirport}
-                    on:click={() => {
-                      departureAirport = option;
-                      depQuery = airportCode(option);
-                      showDepList = false;
-                    }}
-                  >
-                    {airportLabel(option)}
-                  </button>
+	                    on:click={() => {
+		                      departureAirport = option;
+		                      depQuery = airportCode(option);
+		                      showDepList = false;
+		                    }}
+		                  >
+		                    {airportLabel(option)}
+		                  </button>
                 </li>
               {/each}
             </ul>
@@ -405,14 +538,14 @@
                   <button
                     type="button"
                     class:selected={option === arrivalAirport}
-                    on:click={() => {
-                      arrivalAirport = option;
-                      arrQuery = airportCode(option);
-                      showArrList = false;
-                    }}
-                  >
-                    {airportLabel(option)}
-                  </button>
+	                    on:click={() => {
+		                      arrivalAirport = option;
+		                      arrQuery = airportCode(option);
+		                      showArrList = false;
+		                    }}
+		                  >
+		                    {airportLabel(option)}
+		                  </button>
                 </li>
               {/each}
             </ul>
@@ -420,14 +553,18 @@
         </div>
         <small>{arrivalAirport.timeZone ?? arrivalAirport.tz}</small>
       </label>
-      <label>
-        Arrival local date/time
-        <div class="row">
-          <input type="date" bind:value={arrivalDate} />
-          <input type="time" bind:value={arrivalTime} />
-        </div>
-      </label>
-    </div>
+	      <label>
+	        Arrival local date/time
+	        <div class="row">
+	          <input type="date" bind:value={arrivalDate} />
+	          <input type="time" bind:value={arrivalTime} />
+	        </div>
+	        <div class="checkbox-row">
+	          <input type="checkbox" checked={autoEstimateArrival} on:change={onAutoEstimateArrivalChange} />
+	          <span>Auto-estimate arrival time</span>
+	        </div>
+	      </label>
+	    </div>
     {#if error}
       <p class="error">Error: {error}</p>
     {/if}
@@ -447,20 +584,30 @@
       {/if}
     </div>
 
-    <div class="timeline-controls">
-      <button type="button" class="btn primary" on:click={togglePlayback} disabled={!flightPlan}>
-        {isPlaying ? 'Pause' : 'Play'}
-      </button>
-      <div class="speed-control">
-        <span class="speed-label">Speed</span>
-        <select bind:value={playSpeed} disabled={!flightPlan}>
-          <option value={0.5}>0.5×</option>
-          <option value={1}>1×</option>
-          <option value={2}>2×</option>
-          <option value={4}>4×</option>
-        </select>
+      <div class="timeline-controls">
+        <button type="button" class="btn primary" on:click={togglePlayback} disabled={!flightPlan}>
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <div class="pace-control" role="group" aria-label="Playback pace">
+          <span class="pace-label">Pace</span>
+          <div class="segmented">
+            <button
+              type="button"
+              class:active={playSpeed === 1}
+              on:click={() => (playSpeed = 1)}
+              disabled={!flightPlan}
+            >
+              Slow
+            </button>
+            <button type="button" class:active={playSpeed === 2} on:click={() => (playSpeed = 2)} disabled={!flightPlan}>
+              Normal
+            </button>
+            <button type="button" class:active={playSpeed === 4} on:click={() => (playSpeed = 4)} disabled={!flightPlan}>
+              Fast
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
 
     <input
       type="range"
@@ -505,20 +652,15 @@
           </div>
         </div>
 
-        <div class="timeline-card">
-          <div class="kicker">Sunlight</div>
-          <div class="badges">
-            <span class={`badge status-${timelineInfo.status}`}>{timelineInfo.statusLabel}</span>
-            {#if timelineInfo.directionLabel}
-              <span class="badge direction">{timelineInfo.directionLabel}</span>
-            {/if}
-          </div>
-          {#if timelineInfo.status === 'night'}
-            <div class="sub">No direct sunlight at this position.</div>
-          {:else}
-            <div class="sub">Seat-relevant when sun is left/right.</div>
-          {/if}
-        </div>
+	        <div class="timeline-card">
+	          <div class="kicker">Sunlight</div>
+	          <div class="badges">
+	            <span class={`badge status-${timelineInfo.status}`}>{timelineInfo.statusLabel}</span>
+	            {#if timelineInfo.directionLabel}
+	              <span class="badge direction">{timelineInfo.directionLabel}</span>
+	            {/if}
+	          </div>
+	        </div>
       </div>
     {/if}
   </section>
@@ -527,6 +669,7 @@
     <h2>Map</h2>
     <div
       class="map-wrap"
+      bind:this={mapWrapEl}
       class:panning={isPanning}
       on:wheel|preventDefault={(e) => onWheel(e)}
       on:pointerdown={(e) => onPointerDown(e)}
@@ -534,6 +677,26 @@
       on:pointerup={onPointerUp}
       on:pointerleave={onPointerUp}
     >
+      <div class="map-controls" aria-label="Map controls">
+        <button
+          type="button"
+          class="btn icon"
+          on:pointerdown|stopPropagation
+          on:click={() => zoomFromButtons('in')}
+          aria-label="Zoom in"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          class="btn icon"
+          on:pointerdown|stopPropagation
+          on:click={() => zoomFromButtons('out')}
+          aria-label="Zoom out"
+        >
+          −
+        </button>
+      </div>
       <svg viewBox="0 0 1800 900" aria-label="World map">
         <defs>
           <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
@@ -655,20 +818,58 @@
 	    border-color: rgba(79, 209, 255, 0.35);
 	    background: rgba(79, 209, 255, 0.12);
 	  }
+	  .btn.icon {
+	    width: 38px;
+	    height: 38px;
+	    padding: 0;
+	    border-radius: 12px;
+	    display: inline-flex;
+	    align-items: center;
+	    justify-content: center;
+	    font-size: 20px;
+	    line-height: 1;
+	    user-select: none;
+	  }
 	  .btn:disabled {
 	    opacity: 0.55;
 	    cursor: not-allowed;
 	  }
-	  .speed-control {
+	  .pace-control {
 	    display: flex;
 	    align-items: center;
-	    gap: 8px;
+	    gap: 10px;
 	    color: #9fb0c7;
 	  }
-	  .speed-control select {
-	    width: auto;
+	  .pace-label {
+	    font-size: 12px;
+	  }
+	  .segmented {
+	    display: inline-flex;
+	    border: 1px solid #24344c;
+	    border-radius: 999px;
+	    overflow: hidden;
+	    background: rgba(13, 24, 43, 0.8);
+	  }
+	  .segmented button {
+	    appearance: none;
+	    border: none;
+	    background: transparent;
+	    color: #cbd5e1;
 	    padding: 6px 10px;
-	    border-radius: 10px;
+	    font: inherit;
+	    font-size: 13px;
+	    cursor: pointer;
+	  }
+	  .segmented button + button {
+	    border-left: 1px solid #24344c;
+	  }
+	  .segmented button.active {
+	    background: rgba(79, 209, 255, 0.12);
+	    color: #e6edf5;
+	  }
+	  .segmented button:disabled {
+	    opacity: 0.55;
+	    cursor: not-allowed;
 	  }
 	  .timeline-endpoints {
 	    display: flex;
@@ -781,19 +982,23 @@
     gap: 6px;
     color: #d4deed;
   }
-  select,
   input[type='search'],
   input[type='date'],
   input[type='time'],
   input[type='range'] {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #24344c;
-    background: #0d182b;
-    color: #e6edf5;
-  }
+	    width: 100%;
+	    box-sizing: border-box;
+	    padding: 8px;
+	    border-radius: 8px;
+	    border: 1px solid #24344c;
+	    background: #0d182b;
+	    color: #e6edf5;
+	    font: inherit;
+	  }
+	  input[type='date'],
+	  input[type='time'] {
+	    font-variant-numeric: proportional-nums;
+	  }
 	  input[type='range'] {
 	    padding: 0;
 	    accent-color: #4fd1ff;
@@ -807,13 +1012,26 @@
     display: flex;
     gap: 8px;
   }
-  .row input {
-    flex: 1;
-  }
-  .typeahead {
-    position: absolute;
-    top: 100%;
-    left: 0;
+	  .row input {
+	    flex: 1;
+	  }
+	  .checkbox-row {
+	    display: flex;
+	    align-items: center;
+	    gap: 10px;
+	    margin-top: 8px;
+	    color: #9fb0c7;
+	    font-size: 13px;
+	  }
+	  .checkbox-row input {
+	    width: 16px;
+	    height: 16px;
+	    accent-color: #4fd1ff;
+	  }
+	  .typeahead {
+	    position: absolute;
+	    top: 100%;
+	    left: 0;
     right: 0;
     z-index: 10;
     list-style: none;
@@ -849,16 +1067,26 @@
 	    color: #f87171;
 	    margin: 8px 0 0;
 	  }
-  .map-wrap {
-    background: #0e1930;
-    border-radius: 12px;
-    padding: 8px;
-    border: 1px solid #24344c;
-    overflow: hidden;
-    touch-action: none;
-    user-select: none;
-    cursor: grab;
-  }
+	  .map-wrap {
+	    background: #0e1930;
+	    border-radius: 12px;
+	    padding: 8px;
+	    border: 1px solid #24344c;
+	    overflow: hidden;
+	    position: relative;
+	    touch-action: none;
+	    user-select: none;
+	    cursor: grab;
+	  }
+	  .map-controls {
+	    position: absolute;
+	    right: 12px;
+	    bottom: 12px;
+	    display: flex;
+	    flex-direction: column;
+	    gap: 8px;
+	    z-index: 5;
+	  }
   .map-wrap.panning {
     cursor: grabbing;
   }

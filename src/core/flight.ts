@@ -69,6 +69,29 @@ function headingAt(path: GreatCirclePath, t: number): number {
   return bearingDegrees(interpolateOnGreatCircle(path, t1), interpolateOnGreatCircle(path, t2));
 }
 
+export interface FlightDurationEstimateOptions {
+  cruiseSpeedKmh?: number;
+  roundToMinutes?: number;
+  minMinutes?: number;
+}
+
+export function estimateFlightDurationMinutes(
+  distanceMeters: number,
+  options: FlightDurationEstimateOptions = {}
+): number {
+  const cruiseSpeedKmh = options.cruiseSpeedKmh && options.cruiseSpeedKmh > 0 ? options.cruiseSpeedKmh : 900;
+  const roundToMinutes = options.roundToMinutes && options.roundToMinutes > 0 ? options.roundToMinutes : 30;
+  const minMinutes = options.minMinutes && options.minMinutes > 0 ? options.minMinutes : roundToMinutes;
+
+  if (!Number.isFinite(distanceMeters) || distanceMeters <= 0) {
+    return minMinutes;
+  }
+
+  const rawMinutes = (distanceMeters / 1000 / cruiseSpeedKmh) * 60;
+  const rounded = Math.ceil(rawMinutes / roundToMinutes) * roundToMinutes;
+  return Math.max(minMinutes, Math.round(rounded));
+}
+
 /**
  * Sample the flight at a specific timeline position `t` (0..1).
  * Optionally project coordinates for map rendering.

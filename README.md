@@ -4,12 +4,13 @@ Sunside is a static web application (inspired by sunflight.org) that lets you:
 
 - Select a departure and arrival airport.
 - Enter local departure and arrival date/times (in each airport’s local time).
+- Optionally auto-estimate the arrival time from route distance.
 - Visualize the great-circle flight path on a world map.
-- Scrub through the flight timeline and see:
+- Scrub through (or play) the flight timeline and see:
   - Where the aircraft is along the route.
   - Day/night regions of the Earth (terminator).
   - Position of the sun (subsolar point).
-  - Which side of the aircraft the sun is shining on over time.
+  - Sunlight at the aircraft (day/twilight/night + left/right/ahead/behind when visible).
 
 This repository contains the full implementation: **core logic**, a **Svelte UI**, **data prep scripts**, and **tests**.
 
@@ -82,7 +83,7 @@ We will use Node for development tooling and build scripts (not at runtime on th
 Package metadata:
 
 - `"type": "module"` (ESM)
-- Key scripts: `dev`, `build`, `preview`, `test`, `prepare:airports`, `prepare:map`
+- Key scripts: `dev`, `build`, `preview`, `test`, `prepare:airports`, `prepare:map`, `build:map-svg`
 
 ## Repository structure
 
@@ -132,7 +133,8 @@ Please start with `docs/architecture.md`.
 
 - The global day/night overlay is the geometric terminator (sun altitude > 0), computed from the subsolar point; twilight bands are not shown yet.
 - The “sun” marker is the subsolar point (sun at zenith).
-- Aircraft-local sunlight (day/night + relative left/right) is computed at the aircraft position using SunCalc.
+- Aircraft-local sunlight (day/twilight/night + relative direction) is computed at the aircraft position using SunCalc.
+- “Auto-estimate arrival time” assumes a typical cruise speed and rounds up to 30 minutes; it’s meant for planning and visualization, not schedule accuracy.
 
 ## Known issues
 
@@ -143,10 +145,10 @@ Please start with `docs/architecture.md`.
 Current status:
 
 - Core math/time/sun/day-night/flight modules implemented with tests.
-- UI implemented (flight setup, timeline slider, route rendering, pan/zoom map, sun + day/night overlay).
+- UI implemented (flight setup, timeline play/scrub controls, route rendering, pan/zoom map, sun + day/night overlay).
 - Data prep scripts implemented and runnable (`prepare:airports`, `prepare:map`, `build:map-svg`); generated datasets are present.
 
 Next steps:
 
 - Refactor `src/ui/App.svelte` into smaller components as the UI grows.
-- Add timeline playback controls and optional twilight visualization.
+- Optional: visualize twilight bands for the global overlay.

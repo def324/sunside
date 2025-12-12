@@ -38,13 +38,13 @@ This document collects conventions, decisions, and notes that help maintain and 
 Current UI (`src/ui/App.svelte`) supports:
 
 - Airport selection (typeahead with ranked, diacritic-insensitive matching) and local time inputs.
+- Optional “Auto-estimate arrival time” based on route distance (rounded to 30 minutes).
 - Great-circle route rendering.
-- Timeline scrubbing (slider) that updates aircraft position.
+- Timeline play/scrub controls that update aircraft position and sun/day-night state.
 - Global day/night overlay + sun marker that updates with time.
-- Pan/zoom on the map.
+- Pan/zoom on the map (wheel/pinch + drag + zoom buttons).
 
 Potential next refactors:
 
 - Split `App.svelte` into `AirportSelector`, `TimelineControls`, and `MapView`.
-- Add playback controls (play/pause, speed).
 - Optional: visualize twilight bands for the global overlay.

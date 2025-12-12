@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createFlightPlan, sampleFlight } from '../src/core/flight';
+import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight } from '../src/core/flight';
 import { toZonedDateTime } from '../src/core/time';
 
 describe('flight core', () => {
@@ -28,6 +28,12 @@ describe('flight core', () => {
 
     expect(plan.durationMinutes).toBe(180);
     expect(plan.path.distanceMeters).toBeGreaterThan(0);
+  });
+
+  it('estimates duration from distance and rounds to 30 minutes', () => {
+    expect(estimateFlightDurationMinutes(900_000, { cruiseSpeedKmh: 900, roundToMinutes: 30 })).toBe(60);
+    expect(estimateFlightDurationMinutes(100_000, { cruiseSpeedKmh: 900, roundToMinutes: 30 })).toBe(30);
+    expect(estimateFlightDurationMinutes(1_000_000, { cruiseSpeedKmh: 900, roundToMinutes: 30 })).toBe(90);
   });
 
   it('samples flight positions and sun-side classification', () => {

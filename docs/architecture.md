@@ -49,14 +49,15 @@ The current UI lives in `src/ui/App.svelte` and includes:
 
 - Airport selection (typeahead with ranked matching).
 - Local departure/arrival date/time inputs (converted to UTC via core time helpers).
-- A timeline slider (scrubs the flight).
+  - Optional: auto-estimate arrival time from great-circle distance (rounded to 30 minutes).
+- Timeline controls (play/pause, pace selection, and scrubbing).
 - SVG map rendering:
   - base world map (`public/map.svg`)
   - route polyline (great circle)
   - aircraft marker (current sample)
   - day/night overlay + terminator line
   - sun marker (subsolar point)
-- Pan/zoom interactions (wheel + pointer drag).
+- Pan/zoom interactions (wheel/pinch + pointer drag + zoom buttons).
 
 This can be split into smaller components later as the UI grows.
 
