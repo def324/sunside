@@ -11,6 +11,7 @@ Sunside is a static web application (inspired by sunflight.org) that lets you:
   - Day/night regions of the Earth (terminator).
   - Position of the sun (subsolar point).
   - Sunlight at the aircraft (day/twilight/night + left/right/ahead/behind when visible).
+  - Route summary (duration + distance in km/mi with nautical miles).
 
 This repository contains the full implementation: **core logic**, a **Svelte UI**, **data prep scripts**, and **tests**.
 

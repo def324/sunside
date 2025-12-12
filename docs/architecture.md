@@ -19,7 +19,7 @@ UI-agnostic, testable TypeScript:
 - `airportSearch.ts` – ranked airport search used by the typeahead UI.
 - `sun.ts` – SunCalc wrapper plus subsolar-point helpers.
 - `daynight.ts` – global day/night overlay (terminator + SVG paths).
-- `flight.ts` – flight plan construction + timeline sampling (including sun side-of-plane classification).
+- `flight.ts` – flight plan construction + timeline sampling (including sun side-of-plane classification and duration estimates).
 
 ### 2. Runtime data/assets
 
@@ -51,6 +51,7 @@ The current UI lives in `src/ui/App.svelte` and includes:
 - Local departure/arrival date/time inputs (converted to UTC via core time helpers).
   - Optional: auto-estimate arrival time from great-circle distance (rounded to 30 minutes).
 - Timeline controls (play/pause, pace selection, and scrubbing).
+  - Timeline header shows duration and distance (km/mi + nautical miles).
 - SVG map rendering:
   - base world map (`public/map.svg`)
   - route polyline (great circle)

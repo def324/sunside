@@ -23,7 +23,7 @@ npm test
 - `tests/airportSearch.test.ts` – ranked airport search for the typeahead UI.
 - `tests/sun.test.ts` – SunCalc wrapper, subsolar point, and terminator sampling helpers.
 - `tests/daynight.test.ts` – day/night overlay paths (bounds, solstices, seam/equinox edge cases).
-- `tests/flight.test.ts` – flight plan validation, sampling, and sun side-of-plane logic.
+- `tests/flight.test.ts` – flight plan validation, sampling, duration estimates, and sun side-of-plane logic.
 - `tests/prepare-airports.test.ts` – airport CSV filtering/normalization helpers.
 - `tests/prepare-map.test.ts` – map dataset preparation helpers.
 

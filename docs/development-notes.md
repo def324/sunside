@@ -41,8 +41,13 @@ Current UI (`src/ui/App.svelte`) supports:
 - Optional “Auto-estimate arrival time” based on route distance (rounded to 30 minutes).
 - Great-circle route rendering.
 - Timeline play/scrub controls that update aircraft position and sun/day-night state.
+- Timeline header shows duration and distance (km/mi + nautical miles).
 - Global day/night overlay + sun marker that updates with time.
 - Pan/zoom on the map (wheel/pinch + drag + zoom buttons).
+
+Notes:
+
+- Distance defaults to km vs miles based on browser locale; clicking the distance toggles km/mi (keeps nautical miles visible).
 
 Potential next refactors:
 

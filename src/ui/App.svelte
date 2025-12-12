@@ -385,10 +385,45 @@
     return m ? `${h}h ${m}m` : `${h}h`;
   }
 
-  function formatDistanceKm(meters: number): string {
-    const km = Math.round(meters / 1000);
-    return `${numberFmt.format(km)} km`;
-  }
+		  function shouldUseMiles(): boolean {
+		    const localeStr =
+		      (typeof Intl !== 'undefined' && Intl.NumberFormat ? new Intl.NumberFormat().resolvedOptions().locale : undefined) ??
+		      (typeof navigator !== 'undefined' ? navigator.language : undefined) ??
+		      'en';
+
+		    if (typeof Intl !== 'undefined' && 'Locale' in Intl && typeof (Intl as unknown as { Locale?: unknown }).Locale === 'function') {
+		      try {
+		        const locale = new Intl.Locale(localeStr);
+		        const ms = (locale as unknown as { measurementSystem?: string }).measurementSystem;
+		        if (ms === 'ussystem' || ms === 'uksystem') return true;
+		        const region = locale.region?.toUpperCase();
+		        return region === 'US' || region === 'GB' || region === 'LR' || region === 'MM';
+		      } catch {}
+		    }
+
+		    const match = localeStr.replace('_', '-').match(/-([A-Za-z]{2})\b/);
+		    const region = match?.[1]?.toUpperCase();
+		    return region === 'US' || region === 'GB' || region === 'LR' || region === 'MM';
+		  }
+
+		  const AUTO_USE_MILES = shouldUseMiles();
+		  let preferMiles: boolean | null = null;
+		  let useMiles = AUTO_USE_MILES;
+		  $: useMiles = preferMiles ?? AUTO_USE_MILES;
+
+		  function toggleDistanceUnit() {
+		    preferMiles = !useMiles;
+		  }
+
+		  function formatDistance(meters: number, miles: boolean): string {
+		    const nmi = Math.round(meters / 1852);
+		    if (miles) {
+		      const mi = Math.round(meters / 1609.344);
+		      return `${numberFmt.format(mi)} mi (${numberFmt.format(nmi)} nmi)`;
+		    }
+		    const km = Math.round(meters / 1000);
+		    return `${numberFmt.format(km)} km (${numberFmt.format(nmi)} nmi)`;
+		  }
 
   function utcOffsetLabel(offsetMinutes: number): string {
     if (offsetMinutes === 0) return '+00:00';
@@ -588,16 +623,23 @@
   <section class="panel timeline-panel">
     <div class="timeline-header">
       <h2>Timeline</h2>
-      {#if timelineInfo}
-        <div class="timeline-summary">
-          <span class="route">{timelineInfo.routeLabel}</span>
-          <span class="dot">•</span>
-          <span>{formatDuration(flightPlan?.durationMinutes ?? 0)}</span>
-          <span class="dot">•</span>
-          <span>{formatDistanceKm(flightPlan?.path.distanceMeters ?? 0)}</span>
-        </div>
-      {/if}
-    </div>
+	      {#if timelineInfo}
+	        <div class="timeline-summary">
+	          <span class="route">{timelineInfo.routeLabel}</span>
+	          <span class="dot">•</span>
+		          <span>{formatDuration(flightPlan?.durationMinutes ?? 0)}</span>
+		          <span class="dot">•</span>
+		          <button
+		            type="button"
+		            class="distance-toggle"
+		            on:click={toggleDistanceUnit}
+		            aria-label="Toggle distance units"
+		          >
+		            {formatDistance(flightPlan?.path.distanceMeters ?? 0, useMiles)}
+		          </button>
+		        </div>
+		      {/if}
+		    </div>
 
       <div class="timeline-controls">
         <button type="button" class="btn primary" on:click={togglePlayback} disabled={!flightPlan}>
@@ -809,13 +851,29 @@
 	  .timeline-summary .dot {
 	    color: #64748b;
 	  }
-	  .timeline-summary .route {
-	    color: #e6edf5;
-	  }
-	  .timeline-controls {
-	    display: flex;
-	    align-items: center;
-	    justify-content: space-between;
+		  .timeline-summary .route {
+		    color: #e6edf5;
+		  }
+		  .timeline-summary .distance-toggle {
+		    appearance: none;
+		    border: none;
+		    background: none;
+		    padding: 0;
+		    margin: 0;
+		    color: inherit;
+		    font: inherit;
+		    font-weight: inherit;
+		    cursor: default;
+		  }
+		  .timeline-summary .distance-toggle:focus-visible {
+		    outline: 2px solid rgba(79, 209, 255, 0.55);
+		    outline-offset: 3px;
+		    border-radius: 6px;
+		  }
+		  .timeline-controls {
+		    display: flex;
+		    align-items: center;
+		    justify-content: space-between;
 	    gap: 12px;
 	    flex-wrap: wrap;
 	    margin: 6px 0 10px;
