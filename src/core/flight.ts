@@ -70,6 +70,41 @@ function headingAt(path: GreatCirclePath, t: number): number {
 }
 
 /**
+ * Sample the flight at a specific timeline position `t` (0..1).
+ * Optionally project coordinates for map rendering.
+ */
+export function sampleFlightAt(
+  plan: FlightPlan,
+  t: number,
+  projection?: { width: number; height: number }
+): FlightSample {
+  const clamped = Math.min(1, Math.max(0, t));
+  const totalMillis = plan.arrivalUtc - plan.departureUtc;
+  const utcMillis = plan.departureUtc + clamped * totalMillis;
+  const location = interpolateOnGreatCircle(plan.path, clamped);
+  const headingDeg = headingAt(plan.path, clamped);
+  const sunPos = getSunPosition(utcMillis, location.lat, location.lon);
+  const sunBearing = sunBearingFromNorth(sunPos.azimuth);
+  const status = classifyDaylight(sunPos.altitude);
+  const projected = projection ? projectEquirectangular(location, projection.width, projection.height) : undefined;
+
+  return {
+    t: clamped,
+    utcMillis,
+    location,
+    headingDeg,
+    sun: {
+      altitude: sunPos.altitude,
+      azimuth: sunPos.azimuth,
+      bearingDeg: sunBearing,
+      status,
+      side: sunSide(headingDeg, sunBearing)
+    },
+    projected
+  };
+}
+
+/**
  * Construct a validated flight plan with derived timing and path info.
  */
 export function createFlightPlan(
@@ -107,35 +142,11 @@ export function sampleFlight(
   projection?: { width: number; height: number }
 ): FlightSample[] {
   const out: FlightSample[] = [];
-  const totalMillis = plan.arrivalUtc - plan.departureUtc;
   const count = Math.max(2, samples);
 
   for (let i = 0; i < count; i += 1) {
     const t = count === 1 ? 0 : i / (count - 1);
-    const utcMillis = plan.departureUtc + t * totalMillis;
-    const location = interpolateOnGreatCircle(plan.path, t);
-    const headingDeg = headingAt(plan.path, t);
-    const sunPos = getSunPosition(utcMillis, location.lat, location.lon);
-    const sunBearing = sunBearingFromNorth(sunPos.azimuth);
-    const status = classifyDaylight(sunPos.altitude);
-    const projected = projection
-      ? projectEquirectangular(location, projection.width, projection.height)
-      : undefined;
-
-    out.push({
-      t,
-      utcMillis,
-      location,
-      headingDeg,
-      sun: {
-        altitude: sunPos.altitude,
-        azimuth: sunPos.azimuth,
-        bearingDeg: sunBearing,
-        status,
-        side: sunSide(headingDeg, sunBearing)
-      },
-      projected
-    });
+    out.push(sampleFlightAt(plan, t, projection));
   }
 
   return out;

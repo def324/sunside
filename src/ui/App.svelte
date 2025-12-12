@@ -1,8 +1,8 @@
 <script lang="ts">
   import airportsData from '../data/airports.json';
+  import { DateTime } from 'luxon';
   import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
-  import { createFlightPlan, sampleFlight, type Airport } from '../core/flight';
-  import { projectEquirectangular } from '../core/geo';
+  import { createFlightPlan, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
   import { computeDayNightOverlay } from '../core/daynight';
   import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
 
@@ -11,7 +11,7 @@
   const airports: AirportRecord[] = airportsData;
   const airportSearchIndex = buildAirportSearchIndex(airports);
 
-  const SAMPLE_COUNT = 30;
+  const ROUTE_SAMPLE_COUNT = 180;
   const MAP_WIDTH = 1800;
   const MAP_HEIGHT = 900;
 
@@ -37,7 +37,7 @@
 
   let error = '';
   let flightPlan = null as ReturnType<typeof createFlightPlan> | null;
-  let samples = [] as ReturnType<typeof sampleFlight>;
+  let routeSamples = [] as ReturnType<typeof sampleFlight>;
   let t = 0;
   let sliderValue = 0;
   let routePoints = '';
@@ -53,6 +53,13 @@
   let viewScale = 1;
   let isPanning = false;
   let panStart: { x: number; y: number } | null = null;
+  let isPlaying = false;
+  let playSpeed = 1;
+  let playRaf: number | null = null;
+  let lastPlayTs: number | null = null;
+  const PLAYBACK_DURATION_SECONDS = 30;
+  const PLAYBACK_FPS = 30;
+  const numberFmt = new Intl.NumberFormat(undefined);
 
   function toAirport(a: AirportRecord): Airport {
     return {
@@ -79,7 +86,7 @@
   $: {
     error = '';
     flightPlan = null;
-    samples = [];
+    routeSamples = [];
     try {
       const depLocal = parseLocal(departureDate, departureTime);
       const arrLocal = parseLocal(arrivalDate, arrivalTime);
@@ -87,13 +94,8 @@
       const arrZ = toZonedDateTime(arrLocal, arrivalAirport.tz);
       const plan = createFlightPlan(toAirport(departureAirport), toAirport(arrivalAirport), depZ, arrZ);
       flightPlan = plan;
-      samples = sampleFlight(plan, SAMPLE_COUNT);
-      routePoints = samples
-        .map((s) => {
-          const projected = projectEquirectangular(s.location, MAP_WIDTH, MAP_HEIGHT);
-          return `${projected.x.toFixed(1)},${projected.y.toFixed(1)}`;
-        })
-        .join(' ');
+      routeSamples = sampleFlight(plan, ROUTE_SAMPLE_COUNT, { width: MAP_WIDTH, height: MAP_HEIGHT });
+      routePoints = routeSamples.map((s) => `${s.projected!.x.toFixed(1)},${s.projected!.y.toFixed(1)}`).join(' ');
     } catch (e: any) {
       error = e?.message ?? 'Unable to create flight plan';
     }
@@ -101,19 +103,16 @@
 
   $: if (t > 1) t = 1;
 
-  function updateCurrentSample(value: number) {
-    if (!samples.length) {
+  $: if (t < 0) t = 0;
+
+  $: {
+    if (!flightPlan) {
       currentSample = null;
       currentProjected = null;
-      return;
+    } else {
+      currentSample = sampleFlightAt(flightPlan, t, { width: MAP_WIDTH, height: MAP_HEIGHT });
+      currentProjected = currentSample.projected ?? null;
     }
-    const idx = Math.min(samples.length - 1, Math.round(value * (samples.length - 1)));
-    currentSample = samples[idx];
-    currentProjected = projectEquirectangular(currentSample.location, MAP_WIDTH, MAP_HEIGHT);
-  }
-
-  $: if (samples && samples.length) {
-    updateCurrentSample(t);
   }
 
   $: {
@@ -122,6 +121,7 @@
   }
 
   function onSliderInput(event: Event) {
+    if (isPlaying) stopPlayback();
     const input = event.currentTarget as HTMLInputElement;
     sliderValue = Number(input.value);
     if (pendingRaf !== null) {
@@ -129,9 +129,58 @@
     }
     pendingRaf = requestAnimationFrame(() => {
       t = sliderValue;
-      updateCurrentSample(t);
       pendingRaf = null;
     });
+  }
+
+  function stopPlayback() {
+    if (playRaf !== null) {
+      cancelAnimationFrame(playRaf);
+      playRaf = null;
+    }
+    lastPlayTs = null;
+    isPlaying = false;
+  }
+
+  function tickPlayback(now: number) {
+    if (!isPlaying) return;
+    if (!flightPlan) {
+      stopPlayback();
+      return;
+    }
+
+    if (lastPlayTs === null) {
+      lastPlayTs = now;
+      playRaf = requestAnimationFrame(tickPlayback);
+      return;
+    }
+
+    const elapsedMs = now - lastPlayTs;
+    if (elapsedMs < 1000 / PLAYBACK_FPS) {
+      playRaf = requestAnimationFrame(tickPlayback);
+      return;
+    }
+
+    lastPlayTs = now;
+    const dt = (elapsedMs / 1000 / PLAYBACK_DURATION_SECONDS) * playSpeed;
+    t = Math.min(1, t + dt);
+    if (t >= 1) {
+      stopPlayback();
+      return;
+    }
+    playRaf = requestAnimationFrame(tickPlayback);
+  }
+
+  function togglePlayback() {
+    if (!flightPlan) return;
+    if (isPlaying) {
+      stopPlayback();
+      return;
+    }
+    if (t >= 0.999) t = 0;
+    isPlaying = true;
+    lastPlayTs = null;
+    playRaf = requestAnimationFrame(tickPlayback);
   }
 
   function onWheel(event: WheelEvent) {
@@ -180,6 +229,102 @@
   const airportLabel = (a: AirportRecord) => `${a.iata ?? a.icao ?? a.ident} — ${a.name}`;
   const airportCode = (a: AirportRecord) => a.iata ?? a.icao ?? a.ident;
 
+  function formatDuration(mins: number): string {
+    const total = Math.max(0, Math.round(mins));
+    const h = Math.floor(total / 60);
+    const m = total % 60;
+    if (h <= 0) return `${m}m`;
+    return m ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  function formatDistanceKm(meters: number): string {
+    const km = Math.round(meters / 1000);
+    return `${numberFmt.format(km)} km`;
+  }
+
+  function utcOffsetLabel(offsetMinutes: number): string {
+    if (offsetMinutes === 0) return '+00:00';
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const abs = Math.abs(offsetMinutes);
+    const h = Math.floor(abs / 60);
+    const m = abs % 60;
+    return `${sign}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }
+
+  function approxLocalOffsetMinutes(lonDeg: number): number {
+    const rawMinutes = (lonDeg / 15) * 60;
+    return Math.round(rawMinutes / 15) * 15;
+  }
+
+  function formatTime(ms: number, zone: string): string {
+    return DateTime.fromMillis(ms, { zone }).toLocaleString(DateTime.TIME_SIMPLE);
+  }
+
+  function formatDate(ms: number, zone: string): string {
+    return DateTime.fromMillis(ms, { zone }).toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY);
+  }
+
+  function daylightLabel(status: string): string {
+    if (status === 'day') return 'Daylight';
+    if (status === 'twilight') return 'Twilight';
+    return 'Night';
+  }
+
+  function sideLabel(side: string): string {
+    if (side === 'left') return 'Sun on left side';
+    if (side === 'right') return 'Sun on right side';
+    if (side === 'ahead') return 'Sun ahead';
+    return 'Sun behind';
+  }
+
+  type TimelineInfo = {
+    routeLabel: string;
+    utcDate: string;
+    utcTime: string;
+    localTime: string;
+    localOffset: string;
+    elapsed: string;
+    remaining: string;
+    status: 'day' | 'twilight' | 'night';
+    statusLabel: string;
+    directionLabel: string | null;
+    progressPct: number;
+  };
+
+  let timelineInfo: TimelineInfo | null = null;
+  $: {
+    if (!flightPlan || !currentSample) {
+      timelineInfo = null;
+    } else {
+      const utcMillis = currentSample.utcMillis;
+      const utcDate = formatDate(utcMillis, 'utc');
+      const utcTime = formatTime(utcMillis, 'utc');
+      const offsetMinutes = approxLocalOffsetMinutes(currentSample.location.lon);
+      const localTime = DateTime.fromMillis(utcMillis, { zone: 'utc' })
+        .plus({ minutes: offsetMinutes })
+        .toLocaleString(DateTime.TIME_SIMPLE);
+      const localOffset = utcOffsetLabel(offsetMinutes);
+      const elapsedMinutes = Math.max(0, Math.round((utcMillis - flightPlan.departureUtc) / 60000));
+      const remainingMinutes = Math.max(0, flightPlan.durationMinutes - elapsedMinutes);
+      const status = currentSample.sun.status;
+      const directionLabel = status === 'night' ? null : sideLabel(currentSample.sun.side);
+
+      timelineInfo = {
+        routeLabel: `${airportCode(departureAirport)} → ${airportCode(arrivalAirport)}`,
+        utcDate,
+        utcTime,
+        localTime,
+        localOffset,
+        elapsed: formatDuration(elapsedMinutes),
+        remaining: formatDuration(remainingMinutes),
+        status,
+        statusLabel: daylightLabel(status),
+        directionLabel,
+        progressPct: Math.round(currentSample.t * 1000) / 10
+      };
+    }
+  }
+
   function updateSunGraphics(timestamp: number) {
     const overlay = computeDayNightOverlay(timestamp, MAP_WIDTH, MAP_HEIGHT);
     sunProjected = overlay.sun;
@@ -195,12 +340,6 @@
       <h1>Sunside</h1>
       <p class="tagline">Flight sunlight visualizer</p>
     </div>
-    {#if flightPlan}
-      <div class="summary">
-        <div>Duration: {flightPlan.durationMinutes} min</div>
-        <div>Distance: {(flightPlan.path.distanceMeters / 1000).toFixed(0)} km</div>
-      </div>
-    {/if}
   </header>
 
   <section class="panel">
@@ -294,14 +433,92 @@
     {/if}
   </section>
 
-  <section class="panel">
-    <h2>Timeline</h2>
-    <input type="range" min="0" max="1" step="0.01" value={t} on:input={onSliderInput} />
-    {#if currentSample}
-      <div class="timeline-stats">
-        <div>t = {currentSample.t.toFixed(2)}</div>
-        <div>UTC: {new Date(currentSample.utcMillis).toISOString().replace('.000Z', 'Z')}</div>
-        <div>Sun: {currentSample.sun.status}, side: {currentSample.sun.side}</div>
+  <section class="panel timeline-panel">
+    <div class="timeline-header">
+      <h2>Timeline</h2>
+      {#if timelineInfo}
+        <div class="timeline-summary">
+          <span class="route">{timelineInfo.routeLabel}</span>
+          <span class="dot">•</span>
+          <span>{formatDuration(flightPlan?.durationMinutes ?? 0)}</span>
+          <span class="dot">•</span>
+          <span>{formatDistanceKm(flightPlan?.path.distanceMeters ?? 0)}</span>
+        </div>
+      {/if}
+    </div>
+
+    <div class="timeline-controls">
+      <button type="button" class="btn primary" on:click={togglePlayback} disabled={!flightPlan}>
+        {isPlaying ? 'Pause' : 'Play'}
+      </button>
+      <div class="speed-control">
+        <span class="speed-label">Speed</span>
+        <select bind:value={playSpeed} disabled={!flightPlan}>
+          <option value={0.5}>0.5×</option>
+          <option value={1}>1×</option>
+          <option value={2}>2×</option>
+          <option value={4}>4×</option>
+        </select>
+      </div>
+    </div>
+
+    <input
+      type="range"
+      min="0"
+      max="1"
+      step="any"
+      value={t}
+      on:input={onSliderInput}
+      disabled={!flightPlan}
+      aria-label="Flight timeline"
+    />
+
+    {#if flightPlan}
+      <div class="timeline-endpoints">
+        <div class="endpoint">
+          <div class="endpoint-kicker">Depart</div>
+          <div class="endpoint-main">{airportCode(departureAirport)} · {formatTime(flightPlan.departureUtc, departureAirport.tz)}</div>
+          <div class="endpoint-sub">{formatDate(flightPlan.departureUtc, departureAirport.tz)}</div>
+        </div>
+        <div class="endpoint endpoint-right">
+          <div class="endpoint-kicker">Arrive</div>
+          <div class="endpoint-main">{airportCode(arrivalAirport)} · {formatTime(flightPlan.arrivalUtc, arrivalAirport.tz)}</div>
+          <div class="endpoint-sub">{formatDate(flightPlan.arrivalUtc, arrivalAirport.tz)}</div>
+        </div>
+      </div>
+    {/if}
+
+    {#if timelineInfo}
+      <div class="timeline-cards">
+        <div class="timeline-card">
+          <div class="kicker">{timelineInfo.utcDate}</div>
+          <div class="value">{timelineInfo.utcTime} UTC</div>
+          <div class="sub">Local ≈ {timelineInfo.localTime} (UTC{timelineInfo.localOffset})</div>
+        </div>
+
+        <div class="timeline-card">
+          <div class="kicker">Progress</div>
+          <div class="value">{timelineInfo.elapsed} elapsed</div>
+          <div class="sub">{timelineInfo.remaining} remaining</div>
+          <div class="progress-bar" aria-hidden="true">
+            <div class="progress-fill" style={`width: ${timelineInfo.progressPct}%`}></div>
+          </div>
+        </div>
+
+        <div class="timeline-card">
+          <div class="kicker">Sunlight</div>
+          <div class="badges">
+            <span class={`badge status-${timelineInfo.status}`}>{timelineInfo.statusLabel}</span>
+            {#if timelineInfo.directionLabel}
+              <span class="badge direction">{timelineInfo.directionLabel}</span>
+            {/if}
+          </div>
+          {#if timelineInfo.status === 'night'}
+            <div class="sub">No direct sunlight at this position.</div>
+          {:else}
+            <div class="sub">Seat-relevant when sun is left/right.</div>
+          {/if}
+        </div>
       </div>
     {/if}
   </section>
@@ -339,7 +556,7 @@
           {#if terminatorPath}
             <path class="terminator" d={terminatorPath} />
           {/if}
-          {#if samples.length}
+          {#if routeSamples.length}
             <polyline class="route" points={routePoints} />
           {/if}
           {#if currentProjected}
@@ -384,23 +601,180 @@
   h2 {
     margin: 0 0 8px;
   }
-  .tagline {
-    margin: 4px 0 0;
-    color: #9fb0c7;
-  }
-  .summary {
-    display: flex;
-    gap: 16px;
-    color: #d4deed;
-    font-weight: 600;
-  }
-  .panel {
-    background: #121d31;
-    border: 1px solid #24344c;
-    border-radius: 12px;
-    padding: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
-  }
+	  .tagline {
+	    margin: 4px 0 0;
+	    color: #9fb0c7;
+	  }
+	  .panel {
+	    background: #121d31;
+	    border: 1px solid #24344c;
+	    border-radius: 12px;
+	    padding: 12px;
+	    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+	  }
+	  .timeline-header {
+	    display: flex;
+	    align-items: baseline;
+	    justify-content: space-between;
+	    gap: 12px;
+	    flex-wrap: wrap;
+	  }
+	  .timeline-summary {
+	    display: flex;
+	    align-items: baseline;
+	    flex-wrap: wrap;
+	    gap: 6px;
+	    color: #d4deed;
+	    font-weight: 650;
+	  }
+	  .timeline-summary .dot {
+	    color: #64748b;
+	  }
+	  .timeline-summary .route {
+	    color: #e6edf5;
+	  }
+	  .timeline-controls {
+	    display: flex;
+	    align-items: center;
+	    justify-content: space-between;
+	    gap: 12px;
+	    flex-wrap: wrap;
+	    margin: 6px 0 10px;
+	  }
+	  .btn {
+	    appearance: none;
+	    border: 1px solid #24344c;
+	    border-radius: 10px;
+	    padding: 8px 12px;
+	    background: #0d182b;
+	    color: #e6edf5;
+	    font-weight: 650;
+	    cursor: pointer;
+	  }
+	  .btn.primary {
+	    border-color: rgba(79, 209, 255, 0.35);
+	    background: rgba(79, 209, 255, 0.12);
+	  }
+	  .btn:disabled {
+	    opacity: 0.55;
+	    cursor: not-allowed;
+	  }
+	  .speed-control {
+	    display: flex;
+	    align-items: center;
+	    gap: 8px;
+	    color: #9fb0c7;
+	  }
+	  .speed-control select {
+	    width: auto;
+	    padding: 6px 10px;
+	    border-radius: 10px;
+	  }
+	  .timeline-endpoints {
+	    display: flex;
+	    justify-content: space-between;
+	    gap: 12px;
+	    margin: 6px 0 0;
+	  }
+	  .endpoint {
+	    min-width: 120px;
+	  }
+	  .endpoint-right {
+	    text-align: right;
+	  }
+	  .endpoint-kicker {
+	    color: #9fb0c7;
+	    font-size: 11px;
+	    letter-spacing: 0.04em;
+	    text-transform: uppercase;
+	  }
+	  .endpoint-main {
+	    color: #e6edf5;
+	    font-weight: 650;
+	    margin-top: 2px;
+	  }
+	  .endpoint-sub {
+	    color: #9fb0c7;
+	    font-size: 12px;
+	    margin-top: 2px;
+	  }
+	  .timeline-cards {
+	    margin-top: 12px;
+	    display: grid;
+	    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	    gap: 12px;
+	  }
+	  .timeline-card {
+	    background: #0d182b;
+	    border: 1px solid #24344c;
+	    border-radius: 12px;
+	    padding: 10px;
+	  }
+	  .kicker {
+	    color: #9fb0c7;
+	    font-size: 12px;
+	  }
+	  .value {
+	    margin-top: 6px;
+	    font-weight: 750;
+	    letter-spacing: 0.01em;
+	    color: #e6edf5;
+	  }
+	  .sub {
+	    margin-top: 6px;
+	    color: #cbd5e1;
+	    font-size: 12px;
+	    line-height: 1.35;
+	  }
+	  .progress-bar {
+	    margin-top: 10px;
+	    height: 7px;
+	    background: #121d31;
+	    border-radius: 999px;
+	    border: 1px solid #24344c;
+	    overflow: hidden;
+	  }
+	  .progress-fill {
+	    height: 100%;
+	    width: 0;
+	    background: linear-gradient(90deg, rgba(79, 209, 255, 0.55), rgba(255, 209, 102, 0.5));
+	  }
+	  .badges {
+	    margin-top: 8px;
+	    display: flex;
+	    flex-wrap: wrap;
+	    gap: 8px;
+	  }
+	  .badge {
+	    display: inline-flex;
+	    align-items: center;
+	    padding: 4px 10px;
+	    border-radius: 999px;
+	    border: 1px solid #24344c;
+	    font-size: 12px;
+	    font-weight: 650;
+	    color: #e6edf5;
+	    background: rgba(148, 163, 184, 0.08);
+	  }
+	  .badge.status-day {
+	    border-color: rgba(255, 209, 102, 0.35);
+	    background: rgba(255, 209, 102, 0.12);
+	    color: #ffd166;
+	  }
+	  .badge.status-twilight {
+	    border-color: rgba(251, 191, 36, 0.35);
+	    background: rgba(251, 191, 36, 0.12);
+	    color: #fbbf24;
+	  }
+	  .badge.status-night {
+	    border-color: rgba(148, 163, 184, 0.22);
+	    background: rgba(148, 163, 184, 0.08);
+	    color: #cbd5e1;
+	  }
+	  .badge.direction {
+	    border-color: rgba(79, 209, 255, 0.25);
+	    background: rgba(79, 209, 255, 0.08);
+	  }
   label {
     display: flex;
     flex-direction: column;
@@ -420,9 +794,10 @@
     background: #0d182b;
     color: #e6edf5;
   }
-  input[type='range'] {
-    padding: 0;
-  }
+	  input[type='range'] {
+	    padding: 0;
+	    accent-color: #4fd1ff;
+	  }
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -470,16 +845,10 @@
   .typeahead-wrap {
     position: relative;
   }
-  .error {
-    color: #f87171;
-    margin: 8px 0 0;
-  }
-  .timeline-stats {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    color: #d4deed;
-  }
+	  .error {
+	    color: #f87171;
+	    margin: 8px 0 0;
+	  }
   .map-wrap {
     background: #0e1930;
     border-radius: 12px;
