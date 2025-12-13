@@ -5,6 +5,7 @@ Sunside is a static web application (inspired by sunflight.org) that lets you:
 - Select a departure and arrival airport.
 - Enter local departure and arrival date/times (in each airport’s local time).
 - Optionally auto-estimate the arrival time from route distance.
+- Remembers a few UI preferences (auto-estimate toggle, distance units, pace) in local storage.
 - Visualize the great-circle flight path on a world map.
 - Scrub through (or play) the flight timeline and see:
   - Where the aircraft is along the route.

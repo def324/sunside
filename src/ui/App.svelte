@@ -4,10 +4,48 @@
   import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
   import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
   import { computeDayNightOverlay } from '../core/daynight';
-	  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
+		  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
   import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
 
   type AirportRecord = (typeof airportsData)[number];
+  type DistanceUnit = 'km' | 'mi' | 'nmi';
+  type PlaybackSpeed = 1 | 2 | 4;
+
+  type PersistedPrefsV1 = {
+    autoEstimateArrival?: boolean;
+    distanceUnitOverride?: DistanceUnit | null;
+    playSpeed?: PlaybackSpeed;
+  };
+
+  const PREFS_STORAGE_KEY = 'sunside:prefs:v1';
+
+  function readPrefs(): PersistedPrefsV1 {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return {};
+    try {
+      const raw = localStorage.getItem(PREFS_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return {};
+
+      const obj = parsed as Record<string, unknown>;
+      const prefs: PersistedPrefsV1 = {};
+
+      if (typeof obj.autoEstimateArrival === 'boolean') prefs.autoEstimateArrival = obj.autoEstimateArrival;
+
+      const du = obj.distanceUnitOverride;
+      if (du === null) prefs.distanceUnitOverride = null;
+      if (du === 'km' || du === 'mi' || du === 'nmi') prefs.distanceUnitOverride = du;
+
+      const ps = obj.playSpeed;
+      if (ps === 1 || ps === 2 || ps === 4) prefs.playSpeed = ps;
+
+      return prefs;
+    } catch {
+      return {};
+    }
+  }
+
+  const persistedPrefs = readPrefs();
 
   const airports: AirportRecord[] = airportsData;
   const airportSearchIndex = buildAirportSearchIndex(airports);
@@ -37,11 +75,11 @@
   const toTimeStr = (h: number, m: number) => `${pad(h)}:${pad(m)}`;
 
 	  let departureDate = toDateStr(today);
-	  let departureTime = toTimeStr(11, 0);
-	  let arrivalDate = toDateStr(today);
-	  let arrivalTime = toTimeStr(19, 0);
-	  let autoEstimateArrival = true;
-	  let lastArrivalEstimateKey = `${departureAirport.id}|${arrivalAirport.id}|${departureDate}|${departureTime}`;
+		  let departureTime = toTimeStr(11, 0);
+		  let arrivalDate = toDateStr(today);
+		  let arrivalTime = toTimeStr(19, 0);
+		  let autoEstimateArrival = persistedPrefs.autoEstimateArrival ?? true;
+		  let lastArrivalEstimateKey = `${departureAirport.id}|${arrivalAirport.id}|${departureDate}|${departureTime}`;
 
   let error = '';
   let flightPlan = null as ReturnType<typeof createFlightPlan> | null;
@@ -59,12 +97,12 @@
   let viewX = 0;
 	  let viewY = 0;
 	  let viewScale = 1;
-	  let isPanning = false;
-	  let panStart: { x: number; y: number; startViewX: number; startViewY: number } | null = null;
-	  let isPlaying = false;
-	  let playSpeed = 2;
-	  let playRaf: number | null = null;
-	  let lastPlayTs: number | null = null;
+		  let isPanning = false;
+		  let panStart: { x: number; y: number; startViewX: number; startViewY: number } | null = null;
+		  let isPlaying = false;
+		  let playSpeed: PlaybackSpeed = persistedPrefs.playSpeed ?? 2;
+		  let playRaf: number | null = null;
+		  let lastPlayTs: number | null = null;
   const PLAYBACK_DURATION_SECONDS = 30;
   const PLAYBACK_FPS = 30;
 	  const numberFmt = new Intl.NumberFormat(undefined);
@@ -408,19 +446,53 @@
 		    const match = localeStr.replace('_', '-').match(/-([A-Za-z]{2})\b/);
 		    const region = match?.[1]?.toUpperCase();
 		    return region === 'US' || region === 'GB' || region === 'LR' || region === 'MM';
-			  }
+				  }
 
-			  const AUTO_USE_MILES = shouldUseMiles();
-			  type DistanceUnit = 'km' | 'mi' | 'nmi';
-			  const AUTO_DISTANCE_UNIT: DistanceUnit = AUTO_USE_MILES ? 'mi' : 'km';
-			  let distanceUnitOverride: DistanceUnit | null = null;
-			  let distanceUnit: DistanceUnit = AUTO_DISTANCE_UNIT;
-			  $: distanceUnit = distanceUnitOverride ?? AUTO_DISTANCE_UNIT;
+				  const AUTO_USE_MILES = shouldUseMiles();
+				  const AUTO_DISTANCE_UNIT: DistanceUnit = AUTO_USE_MILES ? 'mi' : 'km';
+				  let distanceUnitOverride: DistanceUnit | null = persistedPrefs.distanceUnitOverride ?? null;
+				  let distanceUnit: DistanceUnit = AUTO_DISTANCE_UNIT;
+				  $: distanceUnit = distanceUnitOverride ?? AUTO_DISTANCE_UNIT;
 
-			  function cycleDistanceUnit() {
-			    const next: DistanceUnit = distanceUnit === 'km' ? 'mi' : distanceUnit === 'mi' ? 'nmi' : 'km';
-			    distanceUnitOverride = next;
-			  }
+				  type PrefsToPersist = {
+				    autoEstimateArrival: boolean;
+				    distanceUnitOverride: DistanceUnit | null;
+				    playSpeed: PlaybackSpeed;
+				  };
+
+				  let prefsReady = false;
+				  let prefsLastJson = '';
+				  let prefsSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+				  function writePrefs(prefs: PrefsToPersist) {
+				    if (!prefsReady) return;
+				    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
+				    const json = JSON.stringify(prefs);
+				    if (json === prefsLastJson) return;
+				    prefsLastJson = json;
+				    try {
+				      localStorage.setItem(PREFS_STORAGE_KEY, json);
+				    } catch {}
+				  }
+
+				  function schedulePrefsSave(prefs: PrefsToPersist) {
+				    if (!prefsReady) return;
+				    if (prefsSaveTimeout) clearTimeout(prefsSaveTimeout);
+				    prefsSaveTimeout = setTimeout(() => {
+				      prefsSaveTimeout = null;
+				      writePrefs(prefs);
+				    }, 150);
+				  }
+
+				  prefsLastJson = JSON.stringify({ autoEstimateArrival, distanceUnitOverride, playSpeed });
+				  prefsReady = true;
+
+				  $: if (prefsReady) schedulePrefsSave({ autoEstimateArrival, distanceUnitOverride, playSpeed });
+
+				  function cycleDistanceUnit() {
+				    const next: DistanceUnit = distanceUnit === 'km' ? 'mi' : distanceUnit === 'mi' ? 'nmi' : 'km';
+				    distanceUnitOverride = next;
+				  }
 
 			  function formatDistance(meters: number, unit: DistanceUnit): string {
 			    if (unit === 'km') return `${numberFmt.format(Math.round(meters / 1000))} km`;
