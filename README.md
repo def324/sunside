@@ -32,7 +32,7 @@ npm test -- --run
 
 `npm test` starts Vitest in watch mode.
 
-On first load, the app defaults to `AMS → GRU` on today’s date (`11:00` departure, `19:00` arrival; local times).
+On first load, the app defaults to `AMS → GRU` on today’s date (`11:00` departure, `19:00` arrival; local times). Auto-estimate is enabled, but the initial arrival time is a curated example; changing route/departure will apply auto-estimate.
 
 ## Project goals
 

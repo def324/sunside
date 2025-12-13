@@ -40,8 +40,8 @@
 	  let departureTime = toTimeStr(11, 0);
 	  let arrivalDate = toDateStr(today);
 	  let arrivalTime = toTimeStr(19, 0);
-	  let autoEstimateArrival = false;
-	  let lastArrivalEstimateKey = '';
+	  let autoEstimateArrival = true;
+	  let lastArrivalEstimateKey = `${departureAirport.id}|${arrivalAirport.id}|${departureDate}|${departureTime}`;
 
   let error = '';
   let flightPlan = null as ReturnType<typeof createFlightPlan> | null;
