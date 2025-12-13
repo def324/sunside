@@ -1186,14 +1186,27 @@
 		    font: inherit;
 		  }
 		  input[type='search'],
-		  input[type='date'],
-		  input[type='time'] {
-		    height: 40px;
-		  }
-		  input[type='date'],
-		  input[type='time'] {
-		    font-variant-numeric: proportional-nums;
-		  }
+			  input[type='date'],
+			  input[type='time'] {
+			    height: 40px;
+			  }
+			  input[type='date'],
+			  input[type='time'] {
+			    text-align: left;
+			  }
+			  input[type='date']::-webkit-date-and-time-value,
+			  input[type='time']::-webkit-date-and-time-value {
+			    text-align: left;
+			  }
+			  input[type='date'],
+			  input[type='time'] {
+			    max-width: 100%;
+			    min-width: 0;
+			  }
+			  input[type='date'],
+			  input[type='time'] {
+			    font-variant-numeric: proportional-nums;
+			  }
 		  input[type='date'],
 		  input[type='time'] {
 		    color-scheme: dark;
@@ -1357,24 +1370,25 @@
 		      grid-template-columns: 1fr;
 		      gap: 10px;
 		    }
-	    .flight-setup-grid label {
-	      display: grid;
-	      grid-template-columns: minmax(7.5rem, 38%) 1fr;
-	      gap: 10px;
-	      align-items: start;
-	    }
-	    .flight-setup-grid .field-label {
-	      font-size: 13px;
-	      line-height: 1.2;
-	      padding-top: 6px;
-	    }
+		    .flight-setup-grid label {
+		      display: grid;
+		      grid-template-columns: 7rem minmax(0, 1fr);
+		      gap: 10px;
+		      align-items: start;
+		    }
+		    .flight-setup-grid .field-label {
+		      font-size: 13px;
+		      line-height: 1.2;
+		      padding-top: 6px;
+		    }
 		    .flight-setup-grid .field-control {
 		      min-width: 0;
 		    }
-			    .flight-setup-grid .datetime-row {
-			      display: grid;
-			      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-			      gap: 8px;
+		    .flight-setup-grid .datetime-row {
+		      flex-wrap: wrap;
+		    }
+		    .flight-setup-grid .datetime-row input {
+		      flex: 1 1 140px;
 		    }
 		  }
 		  @media (min-width: 1250px) {

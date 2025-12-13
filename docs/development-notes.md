@@ -51,7 +51,8 @@ Notes:
 - Default route/time on load is `AMS → GRU` on today’s date (`11:00` departure, `19:00` arrival; local times). Auto-estimate is enabled, but the initial arrival time is not overridden until the user changes route/departure.
 - A few UI preferences persist via local storage: auto-estimate toggle, distance unit selection, and playback pace.
 - Distance defaults to km/mi based on browser locale; clicking the distance cycles km/mi/nmi.
-- On desktop layouts, map and timeline are shown side-by-side (map left) to keep both visible.
+- Responsive breakpoints: mobile ≤640px uses the compact inline-label flight setup; tablet widths stack map/timeline; wide screens (≥1250px) show map+timeline side-by-side and the flight setup expands to four columns.
+- iOS Safari note: temporal inputs (`type="date"`, `type="time"`) can have stubborn intrinsic widths; the small-screen layout uses wrapping flex rows to prevent overflow.
 
 Potential next refactors:
 

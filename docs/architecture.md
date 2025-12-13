@@ -59,7 +59,9 @@ The current UI lives in `src/ui/App.svelte` and includes:
   - day/night overlay + terminator line
   - sun marker (subsolar point)
 - Pan/zoom interactions (wheel/pinch + pointer drag + zoom buttons).
-  - On desktop layouts, map and timeline are shown side-by-side (map left) to keep both visible.
+  - Layout is responsive: on wide screens (≥1250px), map and timeline are shown side-by-side (map left); below that they stack.
+  - Flight setup uses a responsive grid: inline labels on small screens, two columns on tablet widths, and four columns on wide screens.
+  - A few UI preferences persist via local storage (auto-estimate toggle, distance units, and playback pace).
 
 This can be split into smaller components later as the UI grows.
 

@@ -41,6 +41,7 @@ On first load, the app defaults to `AMS → GRU` on today’s date (`11:00` depa
 - Minimal, well-chosen dependencies, all open source and actively maintained where possible.
 - No external mapping APIs (e.g. Google Maps); the world map is a static vector asset.
 - Good mobile experience (mobile-first UI) with a usable desktop layout.
+  - Wide screens (≥1250px) show map + timeline side-by-side.
 - Clear, well-documented architecture and an automated test suite.
 
 ## High-level architecture
