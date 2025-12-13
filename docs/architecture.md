@@ -54,7 +54,7 @@ The current UI lives in `src/ui/App.svelte` and includes:
   - Timeline header shows duration and distance (km/mi + nautical miles).
 - SVG map rendering:
   - base world map (`public/map.svg`)
-  - route polyline (great circle)
+  - route polyline(s) (great circle, split at the antimeridian seam)
   - aircraft marker (current sample)
   - day/night overlay + terminator line
   - sun marker (subsolar point)

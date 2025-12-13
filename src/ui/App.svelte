@@ -4,7 +4,7 @@
   import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
   import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
   import { computeDayNightOverlay } from '../core/daynight';
-  import { createGreatCirclePath } from '../core/geo';
+	  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
   import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
 
   type AirportRecord = (typeof airportsData)[number];
@@ -46,10 +46,10 @@
   let error = '';
   let flightPlan = null as ReturnType<typeof createFlightPlan> | null;
   let routeSamples = [] as ReturnType<typeof sampleFlight>;
-  let t = 0;
-  let sliderValue = 0;
-  let routePoints = '';
-  let currentProjected: { x: number; y: number } | null = null;
+	  let t = 0;
+	  let sliderValue = 0;
+	  let routeSegments = [] as string[];
+	  let currentProjected: { x: number; y: number } | null = null;
   let currentSample: ReturnType<typeof sampleFlight>[number] | null = null;
   let sunProjected: { x: number; y: number } | null = null;
   let dayPath = '';
@@ -141,19 +141,23 @@
 	    error = '';
 	    flightPlan = null;
 	    routeSamples = [];
+	    routeSegments = [];
 	    try {
       const depLocal = parseLocal(departureDate, departureTime);
       const arrLocal = parseLocal(arrivalDate, arrivalTime);
       const depZ = toZonedDateTime(depLocal, departureAirport.tz);
       const arrZ = toZonedDateTime(arrLocal, arrivalAirport.tz);
-      const plan = createFlightPlan(toAirport(departureAirport), toAirport(arrivalAirport), depZ, arrZ);
-      flightPlan = plan;
-      routeSamples = sampleFlight(plan, ROUTE_SAMPLE_COUNT, { width: MAP_WIDTH, height: MAP_HEIGHT });
-      routePoints = routeSamples.map((s) => `${s.projected!.x.toFixed(1)},${s.projected!.y.toFixed(1)}`).join(' ');
-    } catch (e: any) {
-      error = e?.message ?? 'Unable to create flight plan';
-    }
-  }
+	      const plan = createFlightPlan(toAirport(departureAirport), toAirport(arrivalAirport), depZ, arrZ);
+	      flightPlan = plan;
+	      routeSamples = sampleFlight(plan, ROUTE_SAMPLE_COUNT, { width: MAP_WIDTH, height: MAP_HEIGHT });
+	      const projected = routeSamples.map((s) => s.projected!).filter(Boolean);
+	      routeSegments = splitPolylineAtMapSeam(projected, MAP_WIDTH)
+	        .filter((seg) => seg.length >= 2)
+	        .map((seg) => seg.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '));
+	    } catch (e: any) {
+	      error = e?.message ?? 'Unable to create flight plan';
+	    }
+	  }
 
   $: if (t > 1) t = 1;
 
@@ -776,9 +780,11 @@
           {#if terminatorPath}
             <path class="terminator" d={terminatorPath} />
           {/if}
-          {#if routeSamples.length}
-            <polyline class="route" points={routePoints} />
-          {/if}
+	          {#if routeSegments.length}
+	            {#each routeSegments as points, i (i)}
+	              <polyline class="route" points={points} />
+	            {/each}
+	          {/if}
           {#if currentProjected}
             <circle class="aircraft" cx={currentProjected.x} cy={currentProjected.y} r="6" />
           {/if}

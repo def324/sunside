@@ -32,6 +32,7 @@ This document collects conventions, decisions, and notes that help maintain and 
 - The UI renders the base map from `public/map.svg` (generated from `src/data/map.json`).
 - Antimeridian-crossing rings are split during preprocessing to avoid wraparound artifacts in `public/map.svg`.
 - Polar “wrap” rings (odd number of dateline jumps) are capped to the nearest pole edge to preserve Antarctica-style geometry.
+- Flight routes are also split at the map seam to avoid a long connecting line when a route wraps from `x≈1800` to `x≈0`.
 
 ## UI status
 

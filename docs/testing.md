@@ -18,7 +18,7 @@ npm test
 
 ## What’s covered
 
-- `tests/geo.test.ts` – great-circle + projection sanity checks.
+- `tests/geo.test.ts` – great-circle + projection sanity checks (including seam splitting).
 - `tests/time.test.ts` – time zone conversion and duration helpers.
 - `tests/airportSearch.test.ts` – ranked airport search for the typeahead UI.
 - `tests/sun.test.ts` – SunCalc wrapper, subsolar point, and terminator sampling helpers.

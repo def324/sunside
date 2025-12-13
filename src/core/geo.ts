@@ -120,6 +120,65 @@ export function projectEquirectangular(point: GeoPoint, width: number, height: n
 }
 
 /**
+ * Split a projected polyline into multiple segments when it crosses the map seam at x=0/width.
+ * This prevents drawing a long line across the map when longitudes wrap at the antimeridian.
+ */
+export function splitPolylineAtMapSeam(points: ProjectedPoint[], width: number): ProjectedPoint[][] {
+  if (!Number.isFinite(width) || width <= 0) return [points];
+  if (points.length <= 1) return points.length ? [points] : [];
+
+  const segments: ProjectedPoint[][] = [];
+  let current: ProjectedPoint[] = [];
+  const jumpThreshold = width / 2;
+
+  for (const point of points) {
+    const prev = current.at(-1);
+    if (!prev) {
+      current = [point];
+      continue;
+    }
+
+    const dx = point.x - prev.x;
+    if (Math.abs(dx) <= jumpThreshold) {
+      current.push(point);
+      continue;
+    }
+
+    if (prev.x > point.x) {
+      const unwrappedX = point.x + width;
+      const denom = unwrappedX - prev.x;
+      if (!Number.isFinite(denom) || denom === 0) {
+        segments.push(current);
+        current = [point];
+        continue;
+      }
+      const t = (width - prev.x) / denom;
+      const y = prev.y + t * (point.y - prev.y);
+      current.push({ x: width, y });
+      segments.push(current);
+      current = [{ x: 0, y }, point];
+      continue;
+    }
+
+    const unwrappedX = point.x - width;
+    const denom = unwrappedX - prev.x;
+    if (!Number.isFinite(denom) || denom === 0) {
+      segments.push(current);
+      current = [point];
+      continue;
+    }
+    const t = (0 - prev.x) / denom;
+    const y = prev.y + t * (point.y - prev.y);
+    current.push({ x: 0, y });
+    segments.push(current);
+    current = [{ x: width, y }, point];
+  }
+
+  if (current.length) segments.push(current);
+  return segments;
+}
+
+/**
  * Compute great-circle distance (meters) between two points.
  */
 export function distanceMeters(from: GeoPoint, to: GeoPoint): number {

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createGreatCirclePath, distanceMeters, interpolateOnGreatCircle, projectEquirectangular } from '../src/core/geo';
+import {
+  createGreatCirclePath,
+  distanceMeters,
+  interpolateOnGreatCircle,
+  projectEquirectangular,
+  splitPolylineAtMapSeam
+} from '../src/core/geo';
 
 describe('geo core', () => {
   it('computes realistic great-circle distances', () => {
@@ -32,5 +38,19 @@ describe('geo core', () => {
     const p2 = projectEquirectangular({ lat: -95, lon: -200 }, 360, 180);
     expect(p2.x).toBeCloseTo(0, 5);
     expect(p2.y).toBeCloseTo(180, 5);
+  });
+
+  it('splits projected polylines across the map seam', () => {
+    const width = 1800;
+    const points = [
+      { x: 1790, y: 100 },
+      { x: 10, y: 200 }
+    ];
+    const segments = splitPolylineAtMapSeam(points, width);
+    expect(segments.length).toBe(2);
+    expect(segments[0].at(-1)?.x).toBe(width);
+    expect(segments[1][0].x).toBe(0);
+    expect(segments[0].at(-1)?.y).toBeCloseTo(150, 5);
+    expect(segments[1][0].y).toBeCloseTo(150, 5);
   });
 });
