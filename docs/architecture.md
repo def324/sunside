@@ -51,7 +51,7 @@ The current UI lives in `src/ui/App.svelte` and includes:
 - Local departure/arrival date/time inputs (converted to UTC via core time helpers).
   - Optional: auto-estimate arrival time from great-circle distance (rounded to 30 minutes).
 - Timeline controls (play/pause, pace selection, and scrubbing).
-  - Timeline header shows duration and distance (km/mi + nautical miles).
+  - Timeline header shows route, duration, and distance (defaults to km/mi by locale; click to cycle km/mi/nmi).
 - SVG map rendering:
   - base world map (`public/map.svg`)
   - route polyline(s) (great circle, split at the antimeridian seam)
@@ -59,6 +59,7 @@ The current UI lives in `src/ui/App.svelte` and includes:
   - day/night overlay + terminator line
   - sun marker (subsolar point)
 - Pan/zoom interactions (wheel/pinch + pointer drag + zoom buttons).
+  - On desktop layouts, map and timeline are shown side-by-side (map left) to keep both visible.
 
 This can be split into smaller components later as the UI grows.
 

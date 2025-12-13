@@ -408,35 +408,34 @@
 		    const match = localeStr.replace('_', '-').match(/-([A-Za-z]{2})\b/);
 		    const region = match?.[1]?.toUpperCase();
 		    return region === 'US' || region === 'GB' || region === 'LR' || region === 'MM';
+			  }
+
+			  const AUTO_USE_MILES = shouldUseMiles();
+			  type DistanceUnit = 'km' | 'mi' | 'nmi';
+			  const AUTO_DISTANCE_UNIT: DistanceUnit = AUTO_USE_MILES ? 'mi' : 'km';
+			  let distanceUnitOverride: DistanceUnit | null = null;
+			  let distanceUnit: DistanceUnit = AUTO_DISTANCE_UNIT;
+			  $: distanceUnit = distanceUnitOverride ?? AUTO_DISTANCE_UNIT;
+
+			  function cycleDistanceUnit() {
+			    const next: DistanceUnit = distanceUnit === 'km' ? 'mi' : distanceUnit === 'mi' ? 'nmi' : 'km';
+			    distanceUnitOverride = next;
+			  }
+
+			  function formatDistance(meters: number, unit: DistanceUnit): string {
+			    if (unit === 'km') return `${numberFmt.format(Math.round(meters / 1000))} km`;
+			    if (unit === 'mi') return `${numberFmt.format(Math.round(meters / 1609.344))} mi`;
+			    return `${numberFmt.format(Math.round(meters / 1852))} nmi`;
+			  }
+
+		  function utcOffsetLabel(offsetMinutes: number): string {
+		    if (offsetMinutes === 0) return '+00:00';
+		    const sign = offsetMinutes >= 0 ? '+' : '-';
+		    const abs = Math.abs(offsetMinutes);
+		    const h = Math.floor(abs / 60);
+		    const m = abs % 60;
+		    return `${sign}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 		  }
-
-		  const AUTO_USE_MILES = shouldUseMiles();
-		  let preferMiles: boolean | null = null;
-		  let useMiles = AUTO_USE_MILES;
-		  $: useMiles = preferMiles ?? AUTO_USE_MILES;
-
-		  function toggleDistanceUnit() {
-		    preferMiles = !useMiles;
-		  }
-
-		  function formatDistance(meters: number, miles: boolean): string {
-		    const nmi = Math.round(meters / 1852);
-		    if (miles) {
-		      const mi = Math.round(meters / 1609.344);
-		      return `${numberFmt.format(mi)} mi (${numberFmt.format(nmi)} nmi)`;
-		    }
-		    const km = Math.round(meters / 1000);
-		    return `${numberFmt.format(km)} km (${numberFmt.format(nmi)} nmi)`;
-		  }
-
-  function utcOffsetLabel(offsetMinutes: number): string {
-    if (offsetMinutes === 0) return '+00:00';
-    const sign = offsetMinutes >= 0 ? '+' : '-';
-    const abs = Math.abs(offsetMinutes);
-    const h = Math.floor(abs / 60);
-    const m = abs % 60;
-    return `${sign}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-  }
 
   function approxLocalOffsetMinutes(lonDeg: number): number {
     const rawMinutes = (lonDeg / 15) * 60;
@@ -475,7 +474,6 @@
 	    status: 'day' | 'twilight' | 'night';
 	    statusLabel: string;
 	    directionLabel: string | null;
-	    progressPct: number;
 	  };
 
   let timelineInfo: TimelineInfo | null = null;
@@ -499,18 +497,17 @@
 	      timelineInfo = {
 	        routeLabel: `${airportCode(departureAirport)} → ${airportCode(arrivalAirport)}`,
 	        utcDate,
-        utcTime,
-        localTime,
-        localOffset,
-        elapsed: formatDuration(elapsedMinutes),
-        remaining: formatDuration(remainingMinutes),
-        status,
-        statusLabel: daylightLabel(status),
-        directionLabel,
-        progressPct: Math.round(currentSample.t * 1000) / 10
-      };
-    }
-  }
+	        utcTime,
+	        localTime,
+	        localOffset,
+	        elapsed: formatDuration(elapsedMinutes),
+	        remaining: formatDuration(remainingMinutes),
+	        status,
+	        statusLabel: daylightLabel(status),
+	        directionLabel
+	      };
+	    }
+	  }
 
   function updateSunGraphics(timestamp: number) {
     const overlay = computeDayNightOverlay(timestamp, MAP_WIDTH, MAP_HEIGHT);
@@ -529,9 +526,9 @@
     </div>
   </header>
 
-  <section class="panel">
-    <h2>Flight setup</h2>
-    <div class="grid">
+	  <section class="panel">
+	    <h2>Flight setup</h2>
+	    <div class="grid">
       <label>
         Departure airport
         <div class="typeahead-wrap">
@@ -621,183 +618,178 @@
 	    </div>
     {#if error}
       <p class="error">Error: {error}</p>
-    {/if}
-  </section>
+	    {/if}
+	  </section>
 
-  <section class="panel timeline-panel">
-    <div class="timeline-header">
-      <h2>Timeline</h2>
+	  <div class="desktop-layout">
+	    <section class="panel timeline-panel">
+	      <div class="timeline-header">
+	        <h2>Timeline</h2>
 	      {#if timelineInfo}
 	        <div class="timeline-summary">
 	          <span class="route">{timelineInfo.routeLabel}</span>
-	          <span class="dot">•</span>
-		          <span>{formatDuration(flightPlan?.durationMinutes ?? 0)}</span>
-		          <span class="dot">•</span>
+	          <span class="duration">{formatDuration(flightPlan?.durationMinutes ?? 0)}</span>
 		          <button
 		            type="button"
 		            class="distance-toggle"
-		            on:click={toggleDistanceUnit}
-		            aria-label="Toggle distance units"
-		          >
-		            {formatDistance(flightPlan?.path.distanceMeters ?? 0, useMiles)}
-		          </button>
-		        </div>
-		      {/if}
-		    </div>
+		            on:click={cycleDistanceUnit}
+		            aria-label="Cycle distance units"
+		            >
+		              {formatDistance(flightPlan?.path.distanceMeters ?? 0, distanceUnit)}
+		            </button>
+		          </div>
+		        {/if}
+		      </div>
 
-      <div class="timeline-controls">
-        <button type="button" class="btn primary" on:click={togglePlayback} disabled={!flightPlan}>
-          {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <div class="pace-control" role="group" aria-label="Playback pace">
-          <span class="pace-label">Pace</span>
-          <div class="segmented">
-            <button
-              type="button"
-              class:active={playSpeed === 1}
-              on:click={() => (playSpeed = 1)}
-              disabled={!flightPlan}
-            >
-              Slow
-            </button>
-            <button type="button" class:active={playSpeed === 2} on:click={() => (playSpeed = 2)} disabled={!flightPlan}>
-              Normal
-            </button>
-            <button type="button" class:active={playSpeed === 4} on:click={() => (playSpeed = 4)} disabled={!flightPlan}>
-              Fast
-            </button>
-          </div>
-        </div>
-      </div>
-
-    <input
-      type="range"
-      min="0"
-      max="1"
-      step="any"
-      value={t}
-      on:input={onSliderInput}
-      disabled={!flightPlan}
-      aria-label="Flight timeline"
-    />
-
-    {#if flightPlan}
-      <div class="timeline-endpoints">
-        <div class="endpoint">
-          <div class="endpoint-kicker">Depart</div>
-          <div class="endpoint-main">{airportCode(departureAirport)} · {formatTime(flightPlan.departureUtc, departureAirport.tz)}</div>
-          <div class="endpoint-sub">{formatDate(flightPlan.departureUtc, departureAirport.tz)}</div>
-        </div>
-        <div class="endpoint endpoint-right">
-          <div class="endpoint-kicker">Arrive</div>
-          <div class="endpoint-main">{airportCode(arrivalAirport)} · {formatTime(flightPlan.arrivalUtc, arrivalAirport.tz)}</div>
-          <div class="endpoint-sub">{formatDate(flightPlan.arrivalUtc, arrivalAirport.tz)}</div>
-        </div>
-      </div>
-    {/if}
-
-    {#if timelineInfo}
-      <div class="timeline-cards">
-        <div class="timeline-card">
-          <div class="kicker">{timelineInfo.utcDate}</div>
-          <div class="value">{timelineInfo.utcTime} UTC</div>
-          <div class="sub">Local ≈ {timelineInfo.localTime} (UTC{timelineInfo.localOffset})</div>
-        </div>
-
-        <div class="timeline-card">
-          <div class="kicker">Progress</div>
-          <div class="value">{timelineInfo.elapsed} elapsed</div>
-          <div class="sub">{timelineInfo.remaining} remaining</div>
-          <div class="progress-bar" aria-hidden="true">
-            <div class="progress-fill" style={`width: ${timelineInfo.progressPct}%`}></div>
-          </div>
-        </div>
-
-	        <div class="timeline-card">
-	          <div class="kicker">Sunlight</div>
-	          <div class="badges">
-	            <span class={`badge status-${timelineInfo.status}`}>{timelineInfo.statusLabel}</span>
-	            {#if timelineInfo.directionLabel}
-	              <span class="badge direction">{timelineInfo.directionLabel}</span>
-	            {/if}
+	      <div class="timeline-controls">
+	        <button type="button" class="btn primary" on:click={togglePlayback} disabled={!flightPlan}>
+	          {isPlaying ? 'Pause' : 'Play'}
+	        </button>
+	        <div class="pace-control" role="group" aria-label="Playback pace">
+	          <span class="pace-label">Pace</span>
+	          <div class="segmented">
+	            <button
+	              type="button"
+	              class:active={playSpeed === 1}
+	              on:click={() => (playSpeed = 1)}
+	              disabled={!flightPlan}
+	            >
+	              Slow
+	            </button>
+	            <button type="button" class:active={playSpeed === 2} on:click={() => (playSpeed = 2)} disabled={!flightPlan}>
+	              Normal
+	            </button>
+	            <button type="button" class:active={playSpeed === 4} on:click={() => (playSpeed = 4)} disabled={!flightPlan}>
+	              Fast
+	            </button>
 	          </div>
 	        </div>
-      </div>
-    {/if}
-  </section>
+	      </div>
 
-  <section class="panel">
-    <h2>Map</h2>
-    <div
-      class="map-wrap"
-      bind:this={mapWrapEl}
-      class:panning={isPanning}
-      on:wheel|preventDefault={(e) => onWheel(e)}
-      on:pointerdown={(e) => onPointerDown(e)}
-      on:pointermove={(e) => onPointerMove(e)}
-      on:pointerup={onPointerUp}
-      on:pointerleave={onPointerUp}
-    >
-      <div class="map-controls" aria-label="Map controls">
-        <button
-          type="button"
-          class="btn icon"
-          on:pointerdown|stopPropagation
-          on:click={() => zoomFromButtons('in')}
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          class="btn icon"
-          on:pointerdown|stopPropagation
-          on:click={() => zoomFromButtons('out')}
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-      </div>
-	      <svg bind:this={mapSvgEl} viewBox="0 0 1800 900" aria-label="World map">
-        <defs>
-          <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stop-color="#ffd166" stop-opacity="0.5" />
-            <stop offset="50%" stop-color="#ffd166" stop-opacity="0.25" />
-            <stop offset="100%" stop-color="#ffd166" stop-opacity="0" />
-          </radialGradient>
-          <clipPath id="map-clip">
-            <rect x="0" y="0" width="1800" height="900" />
-          </clipPath>
-        </defs>
-        <g transform={`translate(${viewX} ${viewY}) scale(${viewScale})`} clip-path="url(#map-clip)">
-          <image href="/map.svg" x="0" y="0" width="1800" height="900" />
-          {#if nightPath}
-            <path class="night" d={nightPath} />
-          {/if}
-          {#if dayPath}
-            <path class="day" d={dayPath} />
-          {/if}
-          {#if terminatorPath}
-            <path class="terminator" d={terminatorPath} />
-          {/if}
-	          {#if routeSegments.length}
-	            {#each routeSegments as points, i (i)}
-	              <polyline class="route" points={points} />
-	            {/each}
-	          {/if}
-          {#if currentProjected}
-            <circle class="aircraft" cx={currentProjected.x} cy={currentProjected.y} r="6" />
-          {/if}
-          {#if sunProjected}
-            <g class="sun" transform={`translate(${sunProjected.x} ${sunProjected.y})`}>
-              <circle class="sun-glow" r="28" />
-              <circle class="sun-core" r="8" />
-            </g>
-          {/if}
-        </g>
-      </svg>
-    </div>
-  </section>
+			      {#if timelineInfo}
+			        <div class="timeline-elapsed">Elapsed {timelineInfo.elapsed} · Remaining {timelineInfo.remaining}</div>
+			      {/if}
+
+			      <input
+			        type="range"
+			        min="0"
+			        max="1"
+			        step="any"
+			        value={t}
+			        on:input={onSliderInput}
+			        disabled={!flightPlan}
+			        aria-label="Flight timeline"
+			      />
+
+			      {#if flightPlan}
+			        <div class="timeline-endpoints">
+			          <div class="endpoint">
+	            <div class="endpoint-kicker">Depart</div>
+	            <div class="endpoint-main">{airportCode(departureAirport)} · {formatTime(flightPlan.departureUtc, departureAirport.tz)}</div>
+	            <div class="endpoint-sub">{formatDate(flightPlan.departureUtc, departureAirport.tz)}</div>
+	          </div>
+	          <div class="endpoint endpoint-right">
+	            <div class="endpoint-kicker">Arrive</div>
+	            <div class="endpoint-main">{airportCode(arrivalAirport)} · {formatTime(flightPlan.arrivalUtc, arrivalAirport.tz)}</div>
+	            <div class="endpoint-sub">{formatDate(flightPlan.arrivalUtc, arrivalAirport.tz)}</div>
+	          </div>
+	        </div>
+	      {/if}
+
+		    {#if timelineInfo}
+		      <div class="timeline-cards">
+		        <div class="timeline-card">
+		          <div class="kicker">{timelineInfo.utcDate}</div>
+		          <div class="value">{timelineInfo.utcTime} UTC</div>
+		          <div class="sub">Local ≈ {timelineInfo.localTime} (UTC{timelineInfo.localOffset})</div>
+		        </div>
+
+		        <div class="timeline-card">
+		          <div class="kicker">Sunlight</div>
+	            <div class="badges">
+	              <span class={`badge status-${timelineInfo.status}`}>{timelineInfo.statusLabel}</span>
+	              {#if timelineInfo.directionLabel}
+	                <span class="badge direction">{timelineInfo.directionLabel}</span>
+	              {/if}
+	            </div>
+	          </div>
+	        </div>
+	      {/if}
+	    </section>
+
+	    <section class="panel map-panel">
+	      <h2>Map</h2>
+	      <div
+	        class="map-wrap"
+	        bind:this={mapWrapEl}
+	        class:panning={isPanning}
+	        on:wheel|preventDefault={(e) => onWheel(e)}
+	        on:pointerdown={(e) => onPointerDown(e)}
+	        on:pointermove={(e) => onPointerMove(e)}
+	        on:pointerup={onPointerUp}
+	        on:pointerleave={onPointerUp}
+	      >
+	        <div class="map-controls" aria-label="Map controls">
+	          <button
+	            type="button"
+	            class="btn icon"
+	            on:pointerdown|stopPropagation
+	            on:click={() => zoomFromButtons('in')}
+	            aria-label="Zoom in"
+	          >
+	            +
+	          </button>
+	          <button
+	            type="button"
+	            class="btn icon"
+	            on:pointerdown|stopPropagation
+	            on:click={() => zoomFromButtons('out')}
+	            aria-label="Zoom out"
+	          >
+	            −
+	          </button>
+	        </div>
+	        <svg bind:this={mapSvgEl} viewBox="0 0 1800 900" aria-label="World map">
+	          <defs>
+	            <radialGradient id="sun-glow" cx="50%" cy="50%" r="50%">
+	              <stop offset="0%" stop-color="#ffd166" stop-opacity="0.5" />
+	              <stop offset="50%" stop-color="#ffd166" stop-opacity="0.25" />
+	              <stop offset="100%" stop-color="#ffd166" stop-opacity="0" />
+	            </radialGradient>
+	            <clipPath id="map-clip">
+	              <rect x="0" y="0" width="1800" height="900" />
+	            </clipPath>
+	          </defs>
+	          <g transform={`translate(${viewX} ${viewY}) scale(${viewScale})`} clip-path="url(#map-clip)">
+	            <image href="/map.svg" x="0" y="0" width="1800" height="900" />
+	            {#if nightPath}
+	              <path class="night" d={nightPath} />
+	            {/if}
+	            {#if dayPath}
+	              <path class="day" d={dayPath} />
+	            {/if}
+	            {#if terminatorPath}
+	              <path class="terminator" d={terminatorPath} />
+	            {/if}
+	            {#if routeSegments.length}
+	              {#each routeSegments as points, i (i)}
+	                <polyline class="route" points={points} />
+	              {/each}
+	            {/if}
+	            {#if currentProjected}
+	              <circle class="aircraft" cx={currentProjected.x} cy={currentProjected.y} r="6" />
+	            {/if}
+	            {#if sunProjected}
+	              <g class="sun" transform={`translate(${sunProjected.x} ${sunProjected.y})`}>
+	                <circle class="sun-glow" r="28" />
+	                <circle class="sun-core" r="8" />
+	              </g>
+	            {/if}
+	          </g>
+	        </svg>
+	      </div>
+	    </section>
+	  </div>
 </main>
 
 <style>
@@ -808,14 +800,35 @@
 	    color: #e6edf5;
 	    color-scheme: dark;
 	  }
-  main.page {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+	  main.page {
+	    max-width: 1200px;
+	    margin: 0 auto;
+	    padding: 16px;
+	    display: flex;
+	    flex-direction: column;
+	    gap: 16px;
+	  }
+	  .desktop-layout {
+	    display: grid;
+	    grid-template-columns: 1fr;
+	    grid-template-areas:
+	      'timeline'
+	      'map';
+	    gap: 16px;
+	  }
+	  .timeline-panel {
+	    grid-area: timeline;
+	  }
+	  .map-panel {
+	    grid-area: map;
+	  }
+	  @media (min-width: 1024px) {
+	    .desktop-layout {
+	      grid-template-columns: 2fr 1fr;
+	      grid-template-areas: 'map timeline';
+	      align-items: start;
+	    }
+	  }
   header {
     display: flex;
     justify-content: space-between;
@@ -846,19 +859,29 @@
 	    gap: 12px;
 	    flex-wrap: wrap;
 	  }
-	  .timeline-summary {
-	    display: flex;
-	    align-items: baseline;
-	    flex-wrap: wrap;
-	    gap: 6px;
-	    color: #d4deed;
-	    font-weight: 650;
-	  }
-	  .timeline-summary .dot {
-	    color: #64748b;
-	  }
+		  .timeline-summary {
+		    display: grid;
+		    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+		    align-items: baseline;
+		    column-gap: 12px;
+		    color: #d4deed;
+		    font-weight: 650;
+		    width: 100%;
+		  }
+		  .timeline-summary .duration {
+		    justify-self: center;
+		  }
 		  .timeline-summary .route {
 		    color: #e6edf5;
+		    justify-self: start;
+		    min-width: 0;
+		    overflow: hidden;
+		    text-overflow: ellipsis;
+		    white-space: nowrap;
+		  }
+		  .timeline-summary .distance-toggle {
+		    justify-self: end;
+		    white-space: nowrap;
 		  }
 		  .timeline-summary .distance-toggle {
 		    appearance: none;
@@ -1007,18 +1030,12 @@
 	    font-size: 12px;
 	    line-height: 1.35;
 	  }
-	  .progress-bar {
-	    margin-top: 10px;
-	    height: 7px;
-	    background: #121d31;
-	    border-radius: 999px;
-	    border: 1px solid #24344c;
-	    overflow: hidden;
-	  }
-	  .progress-fill {
-	    height: 100%;
-	    width: 0;
-	    background: linear-gradient(90deg, rgba(79, 209, 255, 0.55), rgba(255, 209, 102, 0.5));
+	  .timeline-elapsed {
+	    margin: 0 0 4px;
+	    text-align: center;
+	    font-size: 12px;
+	    font-weight: 500;
+	    color: #9fb0c7;
 	  }
 	  .badges {
 	    margin-top: 8px;
