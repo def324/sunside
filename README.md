@@ -32,6 +32,8 @@ npm test -- --run
 
 `npm test` starts Vitest in watch mode.
 
+On first load, the app defaults to `AMS → GRU` on today’s date (`11:00` departure, `19:00` arrival; local times).
+
 ## Project goals
 
 - Fully static HTML/JS/CSS output that can be hosted on GitHub Pages.

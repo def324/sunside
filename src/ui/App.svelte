@@ -16,8 +16,9 @@
   const MAP_WIDTH = 1800;
   const MAP_HEIGHT = 900;
 
-  const defaultDeparture = airports.find((a) => a.iata === 'LAX') ?? airports[0];
+  const defaultDeparture = airports.find((a) => a.iata === 'AMS') ?? airports[0];
   const defaultArrival =
+    airports.find((a) => a.iata === 'GRU') ??
     airports.find((a) => a.iata === 'LHR') ??
     airports.find((a) => a.iata === 'CDG') ??
     airports.find((a) => a.iata === 'JFK') ??
@@ -31,16 +32,15 @@
   let showArrList = false;
 
   const today = new Date();
-  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
   const toDateStr = (d: Date) => d.toISOString().slice(0, 10);
   const pad = (n: number) => n.toString().padStart(2, '0');
   const toTimeStr = (h: number, m: number) => `${pad(h)}:${pad(m)}`;
 
 	  let departureDate = toDateStr(today);
-	  let departureTime = toTimeStr(16, 0);
-	  let arrivalDate = toDateStr(tomorrow);
-	  let arrivalTime = toTimeStr(10, 0);
-	  let autoEstimateArrival = true;
+	  let departureTime = toTimeStr(11, 0);
+	  let arrivalDate = toDateStr(today);
+	  let arrivalTime = toTimeStr(19, 0);
+	  let autoEstimateArrival = false;
 	  let lastArrivalEstimateKey = '';
 
   let error = '';

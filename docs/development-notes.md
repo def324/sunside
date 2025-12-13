@@ -48,6 +48,7 @@ Current UI (`src/ui/App.svelte`) supports:
 
 Notes:
 
+- Default route/time on load is `AMS → GRU` on today’s date (`11:00` departure, `19:00` arrival; local times) with auto-estimate disabled.
 - Distance defaults to km/mi based on browser locale; clicking the distance cycles km/mi/nmi.
 - On desktop layouts, map and timeline are shown side-by-side (map left) to keep both visible.
 
