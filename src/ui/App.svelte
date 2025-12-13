@@ -526,100 +526,108 @@
     </div>
   </header>
 
-	  <section class="panel">
-	    <h2>Flight setup</h2>
-	    <div class="grid">
-      <label>
-        Departure airport
-        <div class="typeahead-wrap">
-          <input
-            type="search"
-            placeholder="Search IATA/ICAO/name"
-            bind:value={depQuery}
-            aria-label="Search departure airport"
-            on:focus={() => (showDepList = depQuery.trim().length > 0)}
-            on:input={() => (showDepList = depQuery.trim().length > 0)}
-            on:blur={() => setTimeout(() => (showDepList = false), 120)}
-          />
-          {#if showDepList && depOptions.length}
-            <ul class="typeahead">
-              {#each depOptions as option (`${option.ident}-${option.id}`)}
-                <li>
-                  <button
-                    type="button"
-                    class:selected={option === departureAirport}
-	                    on:click={() => {
-		                      departureAirport = option;
-		                      depQuery = airportCode(option);
-		                      showDepList = false;
-		                    }}
-		                  >
-		                    {airportLabel(option)}
-		                  </button>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
-        <small>{departureAirport.timeZone ?? departureAirport.tz}</small>
-      </label>
-      <label>
-        Departure local date/time
-        <div class="row">
-          <input type="date" bind:value={departureDate} />
-          <input type="time" bind:value={departureTime} />
-        </div>
-      </label>
-      <label>
-        Arrival airport
-        <div class="typeahead-wrap">
-          <input
-            type="search"
-            placeholder="Search IATA/ICAO/name"
-            bind:value={arrQuery}
-            aria-label="Search arrival airport"
-            on:focus={() => (showArrList = arrQuery.trim().length > 0)}
-            on:input={() => (showArrList = arrQuery.trim().length > 0)}
-            on:blur={() => setTimeout(() => (showArrList = false), 120)}
-          />
-          {#if showArrList && arrOptions.length}
-            <ul class="typeahead">
-              {#each arrOptions as option (`${option.ident}-${option.id}`)}
-                <li>
-                  <button
-                    type="button"
-                    class:selected={option === arrivalAirport}
-	                    on:click={() => {
-		                      arrivalAirport = option;
-		                      arrQuery = airportCode(option);
-		                      showArrList = false;
-		                    }}
-		                  >
-		                    {airportLabel(option)}
-		                  </button>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </div>
-        <small>{arrivalAirport.timeZone ?? arrivalAirport.tz}</small>
-      </label>
+		  <section class="panel">
+		    <h2>Flight setup</h2>
+		    <div class="grid flight-setup-grid">
 	      <label>
-	        Arrival local date/time
-	        <div class="row">
-	          <input type="date" bind:value={arrivalDate} />
-	          <input type="time" bind:value={arrivalTime} />
-	        </div>
-	        <div class="checkbox-row">
-	          <input type="checkbox" checked={autoEstimateArrival} on:change={onAutoEstimateArrivalChange} />
-	          <span>Auto-estimate arrival time</span>
-	        </div>
+	        <span class="field-label">Departure airport</span>
+	        <div class="field-control">
+		        <div class="typeahead-wrap">
+		          <input
+		            type="search"
+		            placeholder="Search IATA/ICAO/name"
+		            bind:value={depQuery}
+		            aria-label="Search departure airport"
+		            on:focus={() => (showDepList = depQuery.trim().length > 0)}
+		            on:input={() => (showDepList = depQuery.trim().length > 0)}
+		            on:blur={() => setTimeout(() => (showDepList = false), 120)}
+		          />
+		          {#if showDepList && depOptions.length}
+		            <ul class="typeahead">
+		              {#each depOptions as option (`${option.ident}-${option.id}`)}
+		                <li>
+		                  <button
+		                    type="button"
+		                    class:selected={option === departureAirport}
+				                    on:click={() => {
+					                      departureAirport = option;
+					                      depQuery = airportCode(option);
+					                      showDepList = false;
+					                    }}
+					                  >
+					                    {airportLabel(option)}
+					                  </button>
+		                </li>
+		              {/each}
+		            </ul>
+		          {/if}
+		        </div>
+		        <small>{departureAirport.timeZone ?? departureAirport.tz}</small>
+		      </div>
 	      </label>
-	    </div>
-    {#if error}
-      <p class="error">Error: {error}</p>
-	    {/if}
-	  </section>
+	      <label>
+	        <span class="field-label">Departure local date/time</span>
+	        <div class="field-control">
+		        <div class="row datetime-row">
+		          <input type="date" bind:value={departureDate} />
+		          <input type="time" bind:value={departureTime} />
+		        </div>
+		      </div>
+	      </label>
+	      <label>
+	        <span class="field-label">Arrival airport</span>
+	        <div class="field-control">
+		        <div class="typeahead-wrap">
+		          <input
+		            type="search"
+		            placeholder="Search IATA/ICAO/name"
+		            bind:value={arrQuery}
+		            aria-label="Search arrival airport"
+		            on:focus={() => (showArrList = arrQuery.trim().length > 0)}
+		            on:input={() => (showArrList = arrQuery.trim().length > 0)}
+		            on:blur={() => setTimeout(() => (showArrList = false), 120)}
+		          />
+		          {#if showArrList && arrOptions.length}
+		            <ul class="typeahead">
+		              {#each arrOptions as option (`${option.ident}-${option.id}`)}
+		                <li>
+		                  <button
+		                    type="button"
+		                    class:selected={option === arrivalAirport}
+				                    on:click={() => {
+					                      arrivalAirport = option;
+					                      arrQuery = airportCode(option);
+					                      showArrList = false;
+					                    }}
+					                  >
+					                    {airportLabel(option)}
+					                  </button>
+		                </li>
+		              {/each}
+		            </ul>
+		          {/if}
+		        </div>
+		        <small>{arrivalAirport.timeZone ?? arrivalAirport.tz}</small>
+		      </div>
+	      </label>
+		      <label>
+		        <span class="field-label">Arrival local date/time</span>
+		        <div class="field-control">
+			        <div class="row datetime-row">
+			          <input type="date" bind:value={arrivalDate} />
+			          <input type="time" bind:value={arrivalTime} />
+			        </div>
+			        <div class="checkbox-row">
+			          <input type="checkbox" checked={autoEstimateArrival} on:change={onAutoEstimateArrivalChange} />
+			          <span>Auto-estimate arrival time</span>
+			        </div>
+		        </div>
+		      </label>
+		    </div>
+	    {#if error}
+	      <p class="error">Error: {error}</p>
+		    {/if}
+		  </section>
 
 	  <div class="desktop-layout">
 	    <section class="panel timeline-panel">
@@ -1073,12 +1081,21 @@
 	    border-color: rgba(79, 209, 255, 0.25);
 	    background: rgba(79, 209, 255, 0.08);
 	  }
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    color: #d4deed;
-  }
+	  label {
+	    display: flex;
+	    flex-direction: column;
+	    gap: 6px;
+	    color: #d4deed;
+	  }
+	  .field-label {
+	    display: block;
+	  }
+	  .field-control {
+	    display: flex;
+	    flex-direction: column;
+	    gap: 6px;
+	    min-width: 0;
+	  }
 	  input[type='search'],
 	  input[type='date'],
 	  input[type='time'],
@@ -1252,13 +1269,35 @@
     stroke-width: 1.25;
     filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.4));
   }
-  @media (max-width: 640px) {
-    header {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    .row {
-      flex-direction: column;
-    }
-  }
-</style>
+	  @media (max-width: 640px) {
+	    header {
+	      flex-direction: column;
+	      align-items: flex-start;
+	    }
+	    .flight-setup-grid {
+	      gap: 10px;
+	    }
+	    .flight-setup-grid label {
+	      display: grid;
+	      grid-template-columns: minmax(7.5rem, 38%) 1fr;
+	      gap: 10px;
+	      align-items: start;
+	    }
+	    .flight-setup-grid .field-label {
+	      font-size: 13px;
+	      line-height: 1.2;
+	      padding-top: 6px;
+	    }
+	    .flight-setup-grid .field-control {
+	      min-width: 0;
+	    }
+	    .flight-setup-grid .field-control small {
+	      display: block;
+	    }
+	    .flight-setup-grid .datetime-row {
+	      display: grid;
+	      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	      gap: 8px;
+	    }
+	  }
+	</style>
