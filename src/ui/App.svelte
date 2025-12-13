@@ -830,13 +830,13 @@
 	  .map-panel {
 	    grid-area: map;
 	  }
-	  @media (min-width: 1024px) {
-	    .desktop-layout {
-	      grid-template-columns: 2fr 1fr;
-	      grid-template-areas: 'map timeline';
-	      align-items: start;
-	    }
-	  }
+		  @media (min-width: 1250px) {
+		    .desktop-layout {
+		      grid-template-columns: 2fr 1fr;
+		      grid-template-areas: 'map timeline';
+		      align-items: start;
+		    }
+		  }
   header {
     display: flex;
     justify-content: space-between;
@@ -1090,12 +1090,16 @@
 	  .field-label {
 	    display: block;
 	  }
-	  .field-control {
-	    display: flex;
-	    flex-direction: column;
-	    gap: 6px;
-	    min-width: 0;
-	  }
+		  .field-control {
+		    display: flex;
+		    flex-direction: column;
+		    gap: 6px;
+		    min-width: 0;
+		  }
+		  .field-control small {
+		    display: block;
+		    margin-left: 8px;
+		  }
 	  input[type='search'],
 	  input[type='date'],
 	  input[type='time'],
@@ -1135,11 +1139,14 @@
 	    padding: 0;
 	    accent-color: #4fd1ff;
 	  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 12px;
-  }
+	  .grid {
+	    display: grid;
+	    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	    gap: 12px;
+	  }
+	  .flight-setup-grid {
+	    grid-template-columns: repeat(2, minmax(0, 1fr));
+	  }
   .row {
     display: flex;
     gap: 8px;
@@ -1269,14 +1276,15 @@
     stroke-width: 1.25;
     filter: drop-shadow(0 0 6px rgba(255, 209, 102, 0.4));
   }
-	  @media (max-width: 640px) {
-	    header {
-	      flex-direction: column;
-	      align-items: flex-start;
-	    }
-	    .flight-setup-grid {
-	      gap: 10px;
-	    }
+		  @media (max-width: 640px) {
+		    header {
+		      flex-direction: column;
+		      align-items: flex-start;
+		    }
+		    .flight-setup-grid {
+		      grid-template-columns: 1fr;
+		      gap: 10px;
+		    }
 	    .flight-setup-grid label {
 	      display: grid;
 	      grid-template-columns: minmax(7.5rem, 38%) 1fr;
@@ -1288,16 +1296,18 @@
 	      line-height: 1.2;
 	      padding-top: 6px;
 	    }
-	    .flight-setup-grid .field-control {
-	      min-width: 0;
-	    }
-	    .flight-setup-grid .field-control small {
-	      display: block;
-	    }
-	    .flight-setup-grid .datetime-row {
-	      display: grid;
-	      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-	      gap: 8px;
-	    }
-	  }
-	</style>
+		    .flight-setup-grid .field-control {
+		      min-width: 0;
+		    }
+			    .flight-setup-grid .datetime-row {
+			      display: grid;
+			      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+			      gap: 8px;
+		    }
+		  }
+		  @media (min-width: 1250px) {
+		    .flight-setup-grid {
+		      grid-template-columns: repeat(4, minmax(0, 1fr));
+		    }
+		  }
+		</style>
