@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:all": "npm run prepare:airports && npm run prepare:map && npm run build:map-svg && npm run test -- --run && npm run build",
     "preview": "vite preview",
     "test": "vitest",
     "prepare:airports": "tsx scripts/prepare-airports.ts",

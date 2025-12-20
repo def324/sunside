@@ -8,6 +8,7 @@ This document collects conventions, decisions, and notes that help maintain and 
 - Primary scripts:
   - `npm run dev`
   - `npm run build`
+  - `npm run build:all` (regenerate data/assets + test + build)
   - `npm run preview`
   - `npm test` (watch)
   - `npm test -- --run` (single run)

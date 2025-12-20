@@ -1,11 +1,19 @@
 # Sunside – Flight Sunlight Visualizer
 
-Sunside is a static web application (inspired by sunflight.org) that lets you:
+## Credit / inspiration
+
+Sunside is heavily inspired by [sunflight.org](https://sunflight.org) — it’s a fantastic tool and deserves the credit for popularizing this “sun side seat” visualization.
+
+At the time of writing, sunflight.org appears to be unavailable, so this project exists as a lightweight alternative that keeps the idea alive (and open source).
+
+## What it does
+
+Sunside is a static web application that lets you:
 
 - Select a departure and arrival airport.
 - Enter local departure and arrival date/times (in each airport’s local time).
 - Optionally auto-estimate the arrival time from route distance.
-- Remembers a few UI preferences (auto-estimate toggle, distance units, pace) in local storage.
+- Remember a few UI preferences (auto-estimate toggle, distance units, pace) in local storage.
 - Visualize the great-circle flight path on a world map.
 - Scrub through (or play) the flight timeline and see:
   - Where the aircraft is along the route.
@@ -17,6 +25,10 @@ Sunside is a static web application (inspired by sunflight.org) that lets you:
 This repository contains the full implementation: **core logic**, a **Svelte UI**, **data prep scripts**, and **tests**.
 
 The main intent is practical: help decide which side of the aircraft to sit on by visualizing sunlight over time.
+
+## AI-assisted development
+
+This project is developed using AI models with human oversight. AI assistance is used for things like code generation, refactoring, and debugging; changes are reviewed and validated with tests.
 
 ## Quickstart
 
@@ -77,18 +89,45 @@ Details are in `docs/architecture.md`, `docs/tech-stack.md`, and `docs/data-sour
 
 See `docs/tech-stack.md` for more details and rationale.
 
-## Node and tooling requirements
+## Tooling and full build
 
-We will use Node for development tooling and build scripts (not at runtime on the client).
+Sunside is fully static at runtime, but uses Node.js for development tooling and build-time data preparation.
 
-- **Required Node version**: Node.js 24.x LTS
-  - The tooling and scripts will assume Node 24.x and are not intended to support older Node versions.
-- **Package manager**: npm (bundled with Node) or an alternative like pnpm/yarn if desired.
+- **Required Node version**: Node.js 24.x LTS (see `package.json` engines)
+- **Package manager**: npm (bundled with Node)
 
-Package metadata:
+### npm scripts
 
-- `"type": "module"` (ESM)
-- Key scripts: `dev`, `build`, `preview`, `test`, `prepare:airports`, `prepare:map`, `build:map-svg`
+- `npm run dev` – start the dev server
+- `npm test` / `npm test -- --run` – run the unit tests (watch / single run)
+- `npm run build` – build the static site into `dist/`
+- `npm run build:all` – regenerate data/assets + run tests + build (see below)
+- `npm run preview` – serve `dist/` locally
+
+### Data preparation (optional)
+
+The repository includes generated datasets/assets so you can typically just run `npm run dev` / `npm run build`.
+
+If you want to regenerate data from upstream sources:
+
+- `npm run prepare:airports`
+  - downloads `data/airports.csv` (OurAirports) if missing
+  - generates `src/data/airports.json`
+- `npm run prepare:map`
+  - downloads a world-atlas TopoJSON snapshot into `data/` if missing
+  - generates `src/data/map.json` (projected equirectangular geometry)
+- `npm run build:map-svg`
+  - generates `public/map.svg` from `src/data/map.json`
+
+These scripts require network access unless the referenced `data/*` snapshots are already present.
+
+### End-to-end rebuild from scratch
+
+```bash
+npm install
+npm run build:all
+npm run preview
+```
 
 ## Repository structure
 
@@ -116,12 +155,6 @@ Package metadata:
 - `docs/`
   - Architecture and development documentation (see below).
 
-## Data prep scripts
-
-- `npm run prepare:airports` – generates `src/data/airports.json` (downloads `data/airports.csv` if missing).
-- `npm run prepare:map` – generates `src/data/map.json` (downloads TopoJSON if missing).
-- `npm run build:map-svg` – generates `public/map.svg` from `src/data/map.json`.
-
 ## Documentation
 
 The main documentation lives in the `docs/` directory:
@@ -140,10 +173,6 @@ Please start with `docs/architecture.md`.
 - The “sun” marker is the subsolar point (sun at zenith).
 - Aircraft-local sunlight (day/twilight/night + relative direction) is computed at the aircraft position using SunCalc.
 - “Auto-estimate arrival time” assumes a typical cruise speed and rounds up to 30 minutes; it’s meant for planning and visualization, not schedule accuracy.
-
-## Known issues
-
-- None currently tracked in-repo; if you spot map rendering artifacts, please include a screenshot and the generated `public/map.svg`.
 
 ## Status and next steps
 
