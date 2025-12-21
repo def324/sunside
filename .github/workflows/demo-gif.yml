@@ -1,0 +1,42 @@
+name: Generate demo GIF
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  demo-gif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Capture demo GIF
+        uses: PabloLec/website-to-gif@2.1.5
+        with:
+          url: https://def324.github.io/sunside/?autoplay=true&autoplaySpeed=4&autoplayDelayMs=1200
+          save_path: /docs/images/
+          file_format: GIF
+          file_name: demo
+          window_width: 1250
+          window_height: 750
+          final_width: 1250
+          final_height: 750
+          no_scoll: true
+          start_delay: 1200
+          time_between_frames: 100
+          number_of_frames: 80
+          time_per_frame: 90
+
+      - name: Commit updated GIF
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/images/demo.gif
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Update demo GIF"
+          git push

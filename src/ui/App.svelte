@@ -1,6 +1,7 @@
 <script lang="ts">
   import airportsData from '../data/airports.json';
   import { DateTime } from 'luxon';
+  import { onMount } from 'svelte';
   import AboutModal from './components/AboutModal.svelte';
   import FlightSetupPanel from './components/FlightSetupPanel.svelte';
   import MapPanel from './components/MapPanel.svelte';
@@ -106,6 +107,10 @@
 		  let playRaf: number | null = null;
 		  let lastPlayTs: number | null = null;
 		  let showAbout = false;
+		  let autoplayRequested = false;
+		  let autoplayStarted = false;
+		  let autoplayDelayMs = 0;
+		  let autoplaySpeed: PlaybackSpeed | null = null;
   const PLAYBACK_DURATION_SECONDS = 30;
   const PLAYBACK_FPS = 30;
 	  const numberFmt = new Intl.NumberFormat(undefined);
@@ -142,6 +147,39 @@
     const [year, month, day] = date.split('-').map((n) => Number(n));
     const [hour, minute] = time.split(':').map((n) => Number(n));
     return { year, month, day, hour, minute };
+  }
+
+  function parseAutoplayParams(search: string): { enabled: boolean; speed: PlaybackSpeed | null; delayMs: number } {
+    const params = new URLSearchParams(search);
+    const rawAutoplay = params.get('autoplay');
+    const enabled =
+      rawAutoplay === '' ||
+      rawAutoplay === '1' ||
+      rawAutoplay === 'true' ||
+      rawAutoplay === 'yes' ||
+      rawAutoplay === 'on';
+
+    const rawSpeed = params.get('autoplaySpeed');
+    let speed: PlaybackSpeed | null = null;
+    if (rawSpeed !== null) {
+      const n = Number(rawSpeed);
+      if (n === 1 || n === 2 || n === 4) speed = n;
+      else console.info('[sunside] Ignoring invalid autoplaySpeed:', rawSpeed);
+    }
+
+    const rawDelay = params.get('autoplayDelayMs');
+    let delayMs = 0;
+    if (rawDelay !== null) {
+      const n = Math.round(Number(rawDelay));
+      if (!Number.isFinite(n)) {
+        console.info('[sunside] Ignoring invalid autoplayDelayMs:', rawDelay);
+      } else {
+        delayMs = Math.min(10_000, Math.max(0, n));
+        if (delayMs !== n) console.info('[sunside] Clamped autoplayDelayMs to', delayMs);
+      }
+    }
+
+    return { enabled, speed, delayMs };
   }
 
   function applyArrivalEstimate() {
@@ -217,6 +255,37 @@
   $: {
     const timestamp = currentSample?.utcMillis ?? Date.now();
     updateSunGraphics(timestamp);
+  }
+
+  onMount(() => {
+    if (typeof window === 'undefined') return;
+    const { enabled, speed, delayMs } = parseAutoplayParams(window.location.search);
+    if (!enabled) return;
+    autoplayRequested = true;
+    autoplayDelayMs = delayMs;
+    autoplaySpeed = speed;
+    if (autoplaySpeed) playSpeed = autoplaySpeed;
+  });
+
+  $: if (autoplayRequested && !autoplayStarted && flightPlan) {
+    autoplayStarted = true;
+    stopPlayback();
+    t = 0;
+    sliderValue = 0;
+
+    const start = () => {
+      if (!flightPlan) return;
+      if (autoplaySpeed) playSpeed = autoplaySpeed;
+      isPlaying = true;
+      lastPlayTs = null;
+      playRaf = requestAnimationFrame(tickPlayback);
+    };
+
+    if (autoplayDelayMs > 0) {
+      setTimeout(start, autoplayDelayMs);
+    } else {
+      start();
+    }
   }
 
   function onSliderInput(event: Event) {

@@ -12,6 +12,10 @@ Sunside helps you decide which side of the plane to sit on by visualizing sunlig
 
 https://def324.github.io/sunside/
 
+## Demo
+
+![Sunside demo](docs/images/demo.gif)
+
 ## Credit / inspiration
 
 Sunside is heavily inspired by [sunflight.org](https://sunflight.org). It’s a fantastic tool and deserves the credit for popularizing this “sun side seat” visualization.
