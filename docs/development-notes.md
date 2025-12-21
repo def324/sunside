@@ -10,8 +10,8 @@ This document collects conventions, decisions, and notes that help maintain and 
   - `npm run build`
   - `npm run build:all` (regenerate data/assets + test + build)
   - `npm run preview`
-  - `npm test` (watch)
-  - `npm test -- --run` (single run)
+  - `npm test -- --run` (single run; recommended for one-off checks / CI)
+  - `npm test` (watch; blocks / keeps running)
   - `npm run prepare:airports`
   - `npm run prepare:map`
   - `npm run build:map-svg`
@@ -37,7 +37,7 @@ This document collects conventions, decisions, and notes that help maintain and 
 
 ## UI status
 
-Current UI (`src/ui/App.svelte`) supports:
+Current UI supports:
 
 - Airport selection (typeahead with ranked, diacritic-insensitive matching) and local time inputs.
 - Optional “Auto-estimate arrival time” based on route distance (rounded to 30 minutes).
@@ -46,6 +46,7 @@ Current UI (`src/ui/App.svelte`) supports:
 - Timeline header shows route, duration, and distance (defaults to km/mi by locale; click to cycle km/mi/nmi).
 - Global day/night overlay + sun marker that updates with time.
 - Pan/zoom on the map (wheel/pinch + drag + zoom buttons).
+- The UI is split into coarse presentational panels under `src/ui/components/`, with global styles in `src/ui/app.css`.
 
 Notes:
 
@@ -57,5 +58,6 @@ Notes:
 
 Potential next refactors:
 
-- Split `App.svelte` into `AirportSelector`, `TimelineControls`, and `MapView`.
+- Move more state/logic out of `src/ui/App.svelte` into dedicated modules/stores as needed.
+- Extract finer-grained UI components if/when the panels get too large.
 - Optional: visualize twilight bands for the global overlay.

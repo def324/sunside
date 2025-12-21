@@ -45,7 +45,15 @@ UI-agnostic, testable TypeScript:
 
 ### 4. UI (`src/ui/`)
 
-The current UI lives in `src/ui/App.svelte` and includes:
+The UI is orchestrated by `src/ui/App.svelte` and composed of coarse presentational panels in `src/ui/components/`:
+
+- `FlightSetupPanel.svelte` – airport + time inputs
+- `TimelinePanel.svelte` – playback controls + timeline info
+- `MapPanel.svelte` – SVG map rendering + pan/zoom interactions
+
+Styles are global in `src/ui/app.css` (imported from `src/main.ts`) to keep styling stable across extracted components.
+
+User-facing features include:
 
 - Airport selection (typeahead with ranked matching).
 - Local departure/arrival date/time inputs (converted to UTC via core time helpers).
@@ -62,8 +70,6 @@ The current UI lives in `src/ui/App.svelte` and includes:
   - Layout is responsive: on wide screens (≥1250px), map and timeline are shown side-by-side (map left); below that they stack.
   - Flight setup uses a responsive grid: inline labels on small screens, two columns on tablet widths, and four columns on wide screens.
   - A few UI preferences persist via local storage (auto-estimate toggle, distance units, and playback pace).
-
-This can be split into smaller components later as the UI grows.
 
 ### 5. Tests (`tests/`)
 
@@ -82,7 +88,7 @@ Vitest unit tests cover:
    - the subsolar point (sun marker)
    - the day/night terminator curve
    - SVG paths for day and night regions
-6. `App.svelte` renders all layers into a single SVG.
+6. `MapPanel.svelte` renders all layers into a single SVG (driven by `App.svelte` state).
 
 ## Day/night model and “sun” marker
 

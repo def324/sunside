@@ -16,6 +16,8 @@ Watch mode:
 npm test
 ```
 
+Note: `npm test` runs Vitest in watch mode and keeps the process running; use `npm test -- --run` for a one-off test run.
+
 ## What’s covered
 
 - `tests/geo.test.ts` – great-circle + projection sanity checks (including seam splitting).

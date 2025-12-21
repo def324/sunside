@@ -4,7 +4,7 @@
 
 Sunside is heavily inspired by [sunflight.org](https://sunflight.org) — it’s a fantastic tool and deserves the credit for popularizing this “sun side seat” visualization.
 
-At the time of writing, sunflight.org appears to be unavailable, so this project exists as a lightweight alternative that keeps the idea alive (and open source).
+As of December 2025, sunflight.org appears to be unavailable. If/when it comes back, it’s worth using — it’s a great reference implementation. This project exists as a lightweight alternative that keeps the idea alive (and open source).
 
 ## What it does
 
@@ -43,7 +43,7 @@ Run tests once:
 npm test -- --run
 ```
 
-`npm test` starts Vitest in watch mode.
+`npm test` starts Vitest in watch mode (blocks / keeps running).
 
 On first load, the app defaults to `AMS → GRU` on today’s date (`11:00` departure, `19:00` arrival; local times). Auto-estimate is enabled, but the initial arrival time is a curated example; changing route/departure will apply auto-estimate.
 
@@ -99,7 +99,8 @@ Sunside is fully static at runtime, but uses Node.js for development tooling and
 ### npm scripts
 
 - `npm run dev` – start the dev server
-- `npm test` / `npm test -- --run` – run the unit tests (watch / single run)
+- `npm test -- --run` – run the unit tests once (recommended for one-off checks / CI)
+- `npm test` – start the unit tests in watch mode (blocks / keeps running)
 - `npm run build` – build the static site into `dist/`
 - `npm run build:all` – regenerate data/assets + run tests + build (see below)
 - `npm run preview` – serve `dist/` locally
@@ -143,13 +144,16 @@ npm run preview
     - `airports.json` – preprocessed airport list.
     - `map.json` – preprocessed map geometry in projected coordinates.
   - `ui/`
-    - `App.svelte` – current UI (flight setup, timeline, map).
+    - `App.svelte` – UI orchestrator (state, derived values, event handlers).
+    - `components/` – presentational panels (`FlightSetupPanel`, `TimelinePanel`, `MapPanel`).
+    - `app.css` – global UI styles (imported from `src/main.ts`).
+    - `types.ts` – shared UI types (airports record type, timeline info, etc).
 - `public/`
   - Static assets (e.g. `map.svg`).
 - `scripts/`
-  - `prepare-airports.*` – Node script to build `airports.json`.
-  - `prepare-map.*` – Node script to build `map.json`.
-  - `build-map-svg.*` – Node script to build `public/map.svg` from `map.json`.
+  - `prepare-airports.ts` – Node script to build `airports.json`.
+  - `prepare-map.ts` – Node script to build `map.json`.
+  - `build-map-svg.ts` – Node script to build `public/map.svg` from `map.json`.
 - `tests/`
   - Unit test files for `src/core/...` using Vitest.
 - `docs/`
@@ -180,9 +184,10 @@ Current status:
 
 - Core math/time/sun/day-night/flight modules implemented with tests.
 - UI implemented (flight setup, timeline play/scrub controls, route rendering, pan/zoom map, sun + day/night overlay).
+- UI is split into coarse panels under `src/ui/components/` with global styling in `src/ui/app.css`.
 - Data prep scripts implemented and runnable (`prepare:airports`, `prepare:map`, `build:map-svg`); generated datasets are present.
 
 Next steps:
 
-- Refactor `src/ui/App.svelte` into smaller components as the UI grows.
 - Optional: visualize twilight bands for the global overlay.
+- If the UI grows further: move more state/logic out of `App.svelte` into dedicated modules/stores and/or extract finer-grained components.
