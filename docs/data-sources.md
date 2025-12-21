@@ -15,9 +15,9 @@ The generated assets are committed so the app can run without any network access
 - CSV mirror used by the script:
   - `https://davidmegginson.github.io/ourairports-data/airports.csv`
 
-Raw snapshot path in this repo:
+Local cache path:
 
-- `data/airports.csv`
+- `data/airports.csv` (local cache; gitignored and not committed by default)
 
 ### Processing
 
@@ -35,7 +35,7 @@ What it does (`scripts/prepare-airports.ts`):
 - Normalizes fields and derives an IANA time zone from coordinates via `tz-lookup`.
 - Writes `src/data/airports.json`.
 
-Optional allowlist:
+Optional allowlist (local; gitignored by default):
 
 - `data/airport-allowlist.json` (array of airport `id` or `ident`)
 
@@ -50,9 +50,9 @@ Optional allowlist:
 - Natural Earth admin-0 country boundaries (public domain), distributed as TopoJSON via world-atlas:
   - `https://github.com/topojson/world-atlas`
 
-Raw snapshot path in this repo:
+Local cache path:
 
-- `data/world-countries-50m.json`
+- `data/world-countries-50m.json` (local cache; gitignored and not committed by default)
 
 The script can also download a default snapshot from:
 

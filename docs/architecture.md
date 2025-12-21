@@ -30,6 +30,8 @@ UI-agnostic, testable TypeScript:
 
 ### 3. Data preparation scripts (`scripts/`)
 
+The `data/` directory is used as a local cache for raw upstream snapshots; it is gitignored and not committed by default.
+
 - `scripts/prepare-airports.ts`
   - Reads `data/airports.csv` (downloads if missing).
   - Filters and normalizes rows.

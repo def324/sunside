@@ -1,5 +1,8 @@
 node_modules/
 
+# local raw data caches (downloaded by prep scripts)
+data/
+
 # build output
 dist/
 .svelte-kit/

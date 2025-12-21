@@ -112,15 +112,15 @@ The repository includes generated datasets/assets so you can typically just run 
 If you want to regenerate data from upstream sources:
 
 - `npm run prepare:airports`
-  - downloads `data/airports.csv` (OurAirports) if missing
+  - downloads `data/airports.csv` (OurAirports) if missing (stored in the local `data/` cache; gitignored)
   - generates `src/data/airports.json`
 - `npm run prepare:map`
-  - downloads a world-atlas TopoJSON snapshot into `data/` if missing
+  - downloads a world-atlas TopoJSON snapshot into the local `data/` cache if missing (gitignored)
   - generates `src/data/map.json` (projected equirectangular geometry)
 - `npm run build:map-svg`
   - generates `public/map.svg` from `src/data/map.json`
 
-These scripts require network access unless the referenced `data/*` snapshots are already present.
+These scripts require network access unless the referenced snapshots are already present in your local `data/` cache.
 
 ### End-to-end rebuild from scratch
 
@@ -177,16 +177,3 @@ Please start with `docs/architecture.md`.
 - The “sun” marker is the subsolar point (sun at zenith).
 - Aircraft-local sunlight (day/twilight/night + relative direction) is computed at the aircraft position using SunCalc.
 - “Auto-estimate arrival time” assumes a typical cruise speed and rounds up to 30 minutes; it’s meant for planning and visualization, not schedule accuracy.
-
-## Status and next steps
-
-Current status:
-
-- Core math/time/sun/day-night/flight modules implemented with tests.
-- UI implemented (flight setup, timeline play/scrub controls, route rendering, pan/zoom map, sun + day/night overlay).
-- UI is split into coarse panels under `src/ui/components/` with global styling in `src/ui/app.css`.
-- Data prep scripts implemented and runnable (`prepare:airports`, `prepare:map`, `build:map-svg`); generated datasets are present.
-
-Next steps:
-
-- If the UI grows further: move more state/logic out of `App.svelte` into dedicated modules/stores and/or extract finer-grained components.
