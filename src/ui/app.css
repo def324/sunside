@@ -51,6 +51,26 @@ header {
   gap: 12px;
 }
 
+.btn.about-trigger {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(13, 24, 43, 0.5);
+  color: #cbd5e1;
+}
+
+.btn.about-trigger:hover {
+  border-color: rgba(79, 209, 255, 0.35);
+  background: rgba(79, 209, 255, 0.1);
+  color: #e6edf5;
+}
+
+.btn.about-trigger:focus-visible {
+  outline: 2px solid rgba(79, 209, 255, 0.55);
+  outline-offset: 3px;
+}
+
 h1 {
   margin: 0;
 }

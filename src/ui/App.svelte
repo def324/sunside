@@ -1,6 +1,7 @@
 <script lang="ts">
   import airportsData from '../data/airports.json';
   import { DateTime } from 'luxon';
+  import AboutModal from './components/AboutModal.svelte';
   import FlightSetupPanel from './components/FlightSetupPanel.svelte';
   import MapPanel from './components/MapPanel.svelte';
   import TimelinePanel from './components/TimelinePanel.svelte';
@@ -98,12 +99,13 @@
   let viewX = 0;
 	  let viewY = 0;
 	  let viewScale = 1;
-		  let isPanning = false;
+	  let isPanning = false;
 		  let panStart: { x: number; y: number; startViewX: number; startViewY: number } | null = null;
 		  let isPlaying = false;
 		  let playSpeed: PlaybackSpeed = persistedPrefs.playSpeed ?? 2;
 		  let playRaf: number | null = null;
 		  let lastPlayTs: number | null = null;
+		  let showAbout = false;
   const PLAYBACK_DURATION_SECONDS = 30;
   const PLAYBACK_FPS = 30;
 	  const numberFmt = new Intl.NumberFormat(undefined);
@@ -585,7 +587,20 @@
       <h1>Sunside</h1>
       <p class="tagline">Flight sunlight visualizer</p>
     </div>
+    <button
+      type="button"
+      class="btn about-trigger"
+      aria-haspopup="dialog"
+      aria-expanded={showAbout}
+      on:click={() => (showAbout = true)}
+    >
+      About
+    </button>
   </header>
+
+  {#if showAbout}
+    <AboutModal onClose={() => (showAbout = false)} />
+  {/if}
 
   <FlightSetupPanel
     bind:departureAirport
