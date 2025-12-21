@@ -173,7 +173,7 @@ Please start with `docs/architecture.md`.
 
 ## Notes on accuracy
 
-- The global day/night overlay is the geometric terminator (sun altitude > 0), computed from the subsolar point; twilight bands are not shown yet.
+- The global overlay renders day/night (sun altitude > 0) plus a subtle **civil twilight** band (sun altitude between `0°` and `-6°`), computed from the subsolar point.
 - The “sun” marker is the subsolar point (sun at zenith).
 - Aircraft-local sunlight (day/twilight/night + relative direction) is computed at the aircraft position using SunCalc.
 - “Auto-estimate arrival time” assumes a typical cruise speed and rounds up to 30 minutes; it’s meant for planning and visualization, not schedule accuracy.
@@ -189,5 +189,4 @@ Current status:
 
 Next steps:
 
-- Optional: visualize twilight bands for the global overlay.
 - If the UI grows further: move more state/logic out of `App.svelte` into dedicated modules/stores and/or extract finer-grained components.

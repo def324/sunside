@@ -531,6 +531,7 @@ image {
 }
 
 .night,
+.twilight,
 .day,
 .terminator,
 .sun {
@@ -539,6 +540,11 @@ image {
 
 .night {
   fill: rgba(5, 10, 18, 0.28);
+}
+
+.twilight {
+  fill: rgba(255, 209, 102, 0.06);
+  mix-blend-mode: screen;
 }
 
 .day {

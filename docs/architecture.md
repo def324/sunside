@@ -94,7 +94,8 @@ Vitest unit tests cover:
 
 - **Sun marker**: the subsolar point (sun directly overhead).
 - **Day/night overlay**: the geometric terminator (sun altitude > 0), rendered as two filled polygons plus a dashed terminator curve.
-- Twilight bands are not rendered globally; aircraft-local classification still distinguishes `day | twilight | night`.
+- **Twilight band**: a subtle civil twilight band (sun altitude between `0°` and `-6°`) rendered on the night side adjacent to the terminator (generated in longitude order to stay seam-safe and stable during animation).
+- Aircraft-local classification still distinguishes `day | twilight | night`.
 
 ## Known limitations
 

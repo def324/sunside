@@ -26,7 +26,8 @@ This document collects conventions, decisions, and notes that help maintain and 
 
 - The global day/night overlay is computed in `src/core/daynight.ts`.
 - It uses the subsolar point and an analytic terminator sampled by longitude to produce stable SVG paths (avoids seam-related artifacts from polygon unwrapping).
-- Twilight bands are not rendered globally; aircraft-local classification in `src/core/sun.ts` still uses `day | twilight | night`.
+- The global civil twilight band (sun altitude between `0°` and `-6°`) is built in the same longitude order and stays aligned with the terminator (avoids seam-related jitter during playback).
+- Aircraft-local classification in `src/core/sun.ts` still uses `day | twilight | night`.
 
 ## Map notes
 
@@ -60,4 +61,3 @@ Potential next refactors:
 
 - Move more state/logic out of `src/ui/App.svelte` into dedicated modules/stores as needed.
 - Extract finer-grained UI components if/when the panels get too large.
-- Optional: visualize twilight bands for the global overlay.

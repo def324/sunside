@@ -91,6 +91,7 @@
   let currentSample: ReturnType<typeof sampleFlight>[number] | null = null;
   let sunProjected: { x: number; y: number } | null = null;
   let dayPath = '';
+  let twilightPath = '';
   let nightPath = '';
   let terminatorPath = '';
   let pendingRaf: number | null = null;
@@ -573,6 +574,7 @@
     sunProjected = overlay.sun;
     terminatorPath = overlay.terminatorPath;
     dayPath = overlay.dayPath;
+    twilightPath = overlay.twilightPath;
     nightPath = overlay.nightPath;
   }
 </script>
@@ -640,6 +642,7 @@
       {onPointerUp}
       {zoomFromButtons}
       {nightPath}
+      {twilightPath}
       {dayPath}
       {terminatorPath}
       {routeSegments}

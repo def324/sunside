@@ -16,6 +16,7 @@
   export let zoomFromButtons: (direction: 'in' | 'out') => void;
 
   export let nightPath: string;
+  export let twilightPath: string;
   export let dayPath: string;
   export let terminatorPath: string;
   export let routeSegments: string[];
@@ -71,6 +72,9 @@
         {#if nightPath}
           <path class="night" d={nightPath} />
         {/if}
+        {#if twilightPath}
+          <path class="twilight" d={twilightPath} />
+        {/if}
         {#if dayPath}
           <path class="day" d={dayPath} />
         {/if}
@@ -95,4 +99,3 @@
     </svg>
   </div>
 </section>
-
