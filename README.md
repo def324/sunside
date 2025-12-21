@@ -1,6 +1,15 @@
 # Sunside – Flight Sunlight Visualizer
 
+[![Build status](https://github.com/def324/sunside/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/def324/sunside/actions/workflows/build.yml)
+[![Test status](https://github.com/def324/sunside/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/def324/sunside/actions/workflows/test.yml)
+[![Site](https://img.shields.io/website?url=https%3A%2F%2Fdef324.github.io%2Fsunside%2F&label=site&up_message=online&down_message=down&logo=github)](https://def324.github.io/sunside/)
+![Node](https://img.shields.io/badge/node-24.x%20LTS-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/typescript-3178C6?logo=typescript&logoColor=white)
+![Svelte](https://img.shields.io/badge/svelte-FF3E00?logo=svelte&logoColor=white)
+
 Sunside helps you decide which side of the plane to sit on by visualizing sunlight along a flight.
+
+Live site: https://def324.github.io/sunside/
 
 ## Credit / inspiration
 
