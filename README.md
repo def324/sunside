@@ -14,9 +14,9 @@ https://def324.github.io/sunside/
 
 ## Credit / inspiration
 
-Sunside is heavily inspired by [sunflight.org](https://sunflight.org) — it’s a fantastic tool and deserves the credit for popularizing this “sun side seat” visualization.
+Sunside is heavily inspired by [sunflight.org](https://sunflight.org). It’s a fantastic tool and deserves the credit for popularizing this “sun side seat” visualization.
 
-As of December 2025, sunflight.org appears to be unavailable. If/when it comes back, it’s worth using — it’s a great reference implementation.
+As of December 2025, sunflight.org appears to be unavailable. If/when it comes back, it’s worth using. It’s a great reference implementation.
 
 ## What it does
 
