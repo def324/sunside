@@ -111,6 +111,8 @@
 		  let autoplayStarted = false;
 		  let autoplayDelayMs = 0;
 		  let autoplaySpeed: PlaybackSpeed | null = null;
+		  let autoplayStartAtEpochMs: number | null = null;
+		  let autoplayStartTimeout: ReturnType<typeof setTimeout> | null = null;
   const PLAYBACK_DURATION_SECONDS = 30;
   const PLAYBACK_FPS = 30;
 	  const numberFmt = new Intl.NumberFormat(undefined);
@@ -265,10 +267,20 @@
     autoplayDelayMs = delayMs;
     autoplaySpeed = speed;
     if (autoplaySpeed) playSpeed = autoplaySpeed;
+
+    const arm = () => {
+      autoplayStartAtEpochMs = Date.now() + autoplayDelayMs;
+    };
+
+    if (document.readyState === 'complete') {
+      arm();
+    } else {
+      window.addEventListener('load', arm, { once: true });
+    }
   });
 
-  $: if (autoplayRequested && !autoplayStarted && flightPlan) {
-    autoplayStarted = true;
+	  $: if (autoplayRequested && !autoplayStarted && flightPlan && autoplayStartAtEpochMs !== null) {
+	    autoplayStarted = true;
     stopPlayback();
     t = 0;
     sliderValue = 0;
@@ -281,12 +293,13 @@
       playRaf = requestAnimationFrame(tickPlayback);
     };
 
-    if (autoplayDelayMs > 0) {
-      setTimeout(start, autoplayDelayMs);
-    } else {
-      start();
-    }
-  }
+    if (autoplayStartTimeout) clearTimeout(autoplayStartTimeout);
+    const remainingMs = Math.max(0, autoplayStartAtEpochMs - Date.now());
+	    autoplayStartTimeout = setTimeout(() => {
+	      autoplayStartTimeout = null;
+	      start();
+	    }, remainingMs);
+	  }
 
   function onSliderInput(event: Event) {
     if (isPlaying) stopPlayback();
