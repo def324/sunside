@@ -2,6 +2,7 @@
 
 [![Build status](https://github.com/def324/sunside/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/def324/sunside/actions/workflows/build.yml)
 [![Test status](https://github.com/def324/sunside/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/def324/sunside/actions/workflows/test.yml)
+[![Deploy status](https://github.com/def324/sunside/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/def324/sunside/actions/workflows/pages.yml)
 [![Site](https://img.shields.io/website?url=https%3A%2F%2Fdef324.github.io%2Fsunside%2F&label=Page&up_message=online&down_message=down&logo=github)](https://def324.github.io/sunside/)
 ![Node](https://img.shields.io/badge/node-24.x%20LTS-339933?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/typescript-3178C6?logo=typescript&logoColor=white)
