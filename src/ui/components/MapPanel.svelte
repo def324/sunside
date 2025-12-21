@@ -1,4 +1,6 @@
 <script lang="ts">
+  const mapAssetHref = `${import.meta.env.BASE_URL}map.svg`;
+
   export let mapWrapEl: HTMLDivElement | null = null;
   export let mapSvgEl: SVGSVGElement | null = null;
 
@@ -68,7 +70,7 @@
         </clipPath>
       </defs>
       <g transform={`translate(${viewX} ${viewY}) scale(${viewScale})`} clip-path="url(#map-clip)">
-        <image href="/map.svg" x="0" y="0" width={mapWidth} height={mapHeight} />
+        <image href={mapAssetHref} x="0" y="0" width={mapWidth} height={mapHeight} />
         {#if nightPath}
           <path class="night" d={nightPath} />
         {/if}
