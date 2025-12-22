@@ -153,8 +153,8 @@
         </div>
 
         {#if autoplay}
-          <div class="pace-control" role="group" aria-label="Autoplay speed">
-            <span class="pace-label">Speed</span>
+          <div class="pace-control" role="group" aria-label="Autoplay pace">
+            <span class="pace-label">Pace</span>
             <div class="segmented">
               <button type="button" class:active={autoplaySpeed === 1} on:click={() => (autoplaySpeed = 1)}>Slow</button>
               <button type="button" class:active={autoplaySpeed === 2} on:click={() => (autoplaySpeed = 2)}>Medium</button>
