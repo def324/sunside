@@ -1,17 +1,19 @@
 <script lang="ts">
   import airportsData from '../data/airports.json';
-  import { DateTime } from 'luxon';
-  import { onMount } from 'svelte';
-  import AboutModal from './components/AboutModal.svelte';
-  import FlightSetupPanel from './components/FlightSetupPanel.svelte';
-  import MapPanel from './components/MapPanel.svelte';
-  import TimelinePanel from './components/TimelinePanel.svelte';
-  import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
-  import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
-  import { computeDayNightOverlay } from '../core/daynight';
-		  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
-  import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
-  import type { AirportRecord, DistanceUnit, PlaybackSpeed, TimelineInfo } from './types';
+	  import { DateTime } from 'luxon';
+	  import { onMount } from 'svelte';
+	  import AboutModal from './components/AboutModal.svelte';
+	  import ShareModal from './components/ShareModal.svelte';
+	  import FlightSetupPanel from './components/FlightSetupPanel.svelte';
+	  import MapPanel from './components/MapPanel.svelte';
+	  import TimelinePanel from './components/TimelinePanel.svelte';
+	  import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
+	  import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
+	  import { computeDayNightOverlay } from '../core/daynight';
+			  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
+	  import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
+	  import { parseAutoplayParams, parseShareFlightParams } from './urlParams';
+	  import type { AirportRecord, DistanceUnit, PlaybackSpeed, TimelineInfo } from './types';
 
   type PersistedPrefsV1 = {
     autoEstimateArrival?: boolean;
@@ -100,16 +102,18 @@
   let viewX = 0;
 	  let viewY = 0;
 	  let viewScale = 1;
-	  let isPanning = false;
+		  let isPanning = false;
 		  let panStart: { x: number; y: number; startViewX: number; startViewY: number } | null = null;
-		  let isPlaying = false;
-		  let playSpeed: PlaybackSpeed = persistedPrefs.playSpeed ?? 2;
-		  let playRaf: number | null = null;
-		  let lastPlayTs: number | null = null;
-		  let showAbout = false;
-		  let autoplayRequested = false;
-		  let autoplayStarted = false;
-		  let autoplayDelayMs = 0;
+			  let isPlaying = false;
+			  let playSpeedPref: PlaybackSpeed = persistedPrefs.playSpeed ?? 2;
+			  let playSpeed: PlaybackSpeed = playSpeedPref;
+			  let playRaf: number | null = null;
+			  let lastPlayTs: number | null = null;
+			  let showAbout = false;
+			  let showShare = false;
+			  let autoplayRequested = false;
+			  let autoplayStarted = false;
+			  let autoplayDelayMs = 0;
 		  let autoplaySpeed: PlaybackSpeed | null = null;
 		  let autoplayStartAtEpochMs: number | null = null;
 		  let autoplayStartTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -145,47 +149,21 @@
     };
   }
 
-  function parseLocal(date: string, time: string): LocalDateTimeInput {
-    const [year, month, day] = date.split('-').map((n) => Number(n));
-    const [hour, minute] = time.split(':').map((n) => Number(n));
-    return { year, month, day, hour, minute };
-  }
+	  function parseLocal(date: string, time: string): LocalDateTimeInput {
+	    const [year, month, day] = date.split('-').map((n) => Number(n));
+	    const [hour, minute] = time.split(':').map((n) => Number(n));
+	    return { year, month, day, hour, minute };
+	  }
 
-  function parseAutoplayParams(search: string): { enabled: boolean; speed: PlaybackSpeed | null; delayMs: number } {
-    const params = new URLSearchParams(search);
-    const rawAutoplay = params.get('autoplay');
-    const enabled =
-      rawAutoplay === '' ||
-      rawAutoplay === '1' ||
-      rawAutoplay === 'true' ||
-      rawAutoplay === 'yes' ||
-      rawAutoplay === 'on';
+	  type PlaySpeedSource = 'user' | 'url';
 
-    const rawSpeed = params.get('autoplaySpeed');
-    let speed: PlaybackSpeed | null = null;
-    if (rawSpeed !== null) {
-      const n = Number(rawSpeed);
-      if (n === 1 || n === 2 || n === 4) speed = n;
-      else console.info('[sunside] Ignoring invalid autoplaySpeed:', rawSpeed);
-    }
+	  function setPlaybackSpeed(next: PlaybackSpeed, source: PlaySpeedSource) {
+	    playSpeed = next;
+	    if (source === 'user') playSpeedPref = next;
+	  }
 
-    const rawDelay = params.get('autoplayDelayMs');
-    let delayMs = 0;
-    if (rawDelay !== null) {
-      const n = Math.round(Number(rawDelay));
-      if (!Number.isFinite(n)) {
-        console.info('[sunside] Ignoring invalid autoplayDelayMs:', rawDelay);
-      } else {
-        delayMs = Math.min(10_000, Math.max(0, n));
-        if (delayMs !== n) console.info('[sunside] Clamped autoplayDelayMs to', delayMs);
-      }
-    }
-
-    return { enabled, speed, delayMs };
-  }
-
-  function applyArrivalEstimate() {
-    try {
+	  function applyArrivalEstimate() {
+	    try {
       const depZ = toZonedDateTime(parseLocal(departureDate, departureTime), departureAirport.tz);
       const path = createGreatCirclePath(toAirport(departureAirport).location, toAirport(arrivalAirport).location);
       const durationMinutes = estimateFlightDurationMinutes(path.distanceMeters, { roundToMinutes: 30 });
@@ -259,14 +237,32 @@
     updateSunGraphics(timestamp);
   }
 
-  onMount(() => {
-    if (typeof window === 'undefined') return;
-    const { enabled, speed, delayMs } = parseAutoplayParams(window.location.search);
-    if (!enabled) return;
-    autoplayRequested = true;
-    autoplayDelayMs = delayMs;
-    autoplaySpeed = speed;
-    if (autoplaySpeed) playSpeed = autoplaySpeed;
+	  onMount(() => {
+	    if (typeof window === 'undefined') return;
+	    const params = new URLSearchParams(window.location.search);
+	    const share = parseShareFlightParams(airports, params);
+	    if (share) {
+	      departureAirport = share.departure;
+	      arrivalAirport = share.arrival;
+	      depQuery = airportCode(share.departure);
+	      arrQuery = airportCode(share.arrival);
+	      showDepList = false;
+	      showArrList = false;
+	      departureDate = share.departureDate;
+	      departureTime = share.departureTime;
+	      arrivalDate = share.arrivalDate;
+	      arrivalTime = share.arrivalTime;
+	      t = 0;
+	      sliderValue = 0;
+	      lastArrivalEstimateKey = `${departureAirport.id}|${arrivalAirport.id}|${departureDate}|${departureTime}`;
+	    }
+
+	    const { enabled, speed, delayMs } = parseAutoplayParams(params);
+	    if (!enabled) return;
+	    autoplayRequested = true;
+	    autoplayDelayMs = delayMs;
+	    autoplaySpeed = speed;
+	    if (autoplaySpeed) setPlaybackSpeed(autoplaySpeed, 'url');
 
     const arm = () => {
       autoplayStartAtEpochMs = Date.now() + autoplayDelayMs;
@@ -285,13 +281,13 @@
     t = 0;
     sliderValue = 0;
 
-    const start = () => {
-      if (!flightPlan) return;
-      if (autoplaySpeed) playSpeed = autoplaySpeed;
-      isPlaying = true;
-      lastPlayTs = null;
-      playRaf = requestAnimationFrame(tickPlayback);
-    };
+	    const start = () => {
+	      if (!flightPlan) return;
+	      if (autoplaySpeed) setPlaybackSpeed(autoplaySpeed, 'url');
+	      isPlaying = true;
+	      lastPlayTs = null;
+	      playRaf = requestAnimationFrame(tickPlayback);
+	    };
 
     if (autoplayStartTimeout) clearTimeout(autoplayStartTimeout);
     const remainingMs = Math.max(0, autoplayStartAtEpochMs - Date.now());
@@ -539,11 +535,11 @@
 				  let distanceUnit: DistanceUnit = AUTO_DISTANCE_UNIT;
 				  $: distanceUnit = distanceUnitOverride ?? AUTO_DISTANCE_UNIT;
 
-				  type PrefsToPersist = {
-				    autoEstimateArrival: boolean;
-				    distanceUnitOverride: DistanceUnit | null;
-				    playSpeed: PlaybackSpeed;
-				  };
+					  type PrefsToPersist = {
+					    autoEstimateArrival: boolean;
+					    distanceUnitOverride: DistanceUnit | null;
+					    playSpeed: PlaybackSpeed;
+					  };
 
 				  let prefsReady = false;
 				  let prefsLastJson = '';
@@ -569,10 +565,11 @@
 				    }, 150);
 				  }
 
-				  prefsLastJson = JSON.stringify({ autoEstimateArrival, distanceUnitOverride, playSpeed });
-				  prefsReady = true;
+					  prefsLastJson = JSON.stringify({ autoEstimateArrival, distanceUnitOverride, playSpeed: playSpeedPref });
+					  prefsReady = true;
 
-				  $: if (prefsReady) schedulePrefsSave({ autoEstimateArrival, distanceUnitOverride, playSpeed });
+					  $: if (prefsReady)
+					    schedulePrefsSave({ autoEstimateArrival, distanceUnitOverride, playSpeed: playSpeedPref });
 
 				  function cycleDistanceUnit() {
 				    const next: DistanceUnit = distanceUnit === 'km' ? 'mi' : distanceUnit === 'mi' ? 'nmi' : 'km';
@@ -663,26 +660,51 @@
   }
 </script>
 
-<main class="page">
-  <header>
-    <div>
-      <h1>Sunside</h1>
-      <p class="tagline">Flight sunlight visualizer</p>
-    </div>
-    <button
-      type="button"
-      class="btn about-trigger"
-      aria-haspopup="dialog"
-      aria-expanded={showAbout}
-      on:click={() => (showAbout = true)}
-    >
-      About
-    </button>
-  </header>
+	<main class="page">
+	  <header>
+	    <div>
+	      <h1>Sunside</h1>
+	      <p class="tagline">Flight sunlight visualizer</p>
+	    </div>
+	    <div class="header-actions">
+	      <button
+	        type="button"
+	        class="btn header-trigger"
+	        aria-haspopup="dialog"
+	        aria-expanded={showShare}
+	        on:click={() => (showShare = true)}
+	      >
+	        Share
+	      </button>
+	      <button
+	        type="button"
+	        class="btn header-trigger"
+	        aria-haspopup="dialog"
+	        aria-expanded={showAbout}
+	        on:click={() => (showAbout = true)}
+	      >
+	        About
+	      </button>
+	    </div>
+	  </header>
 
-  {#if showAbout}
-    <AboutModal onClose={() => (showAbout = false)} />
-  {/if}
+	  {#if showAbout}
+	    <AboutModal onClose={() => (showAbout = false)} />
+	  {/if}
+
+	  {#if showShare}
+	    <ShareModal
+	      onClose={() => (showShare = false)}
+	      {departureAirport}
+	      {arrivalAirport}
+	      {departureDate}
+	      {departureTime}
+	      {arrivalDate}
+	      {arrivalTime}
+	      {airportCode}
+	      {playSpeed}
+	    />
+	  {/if}
 
   <FlightSetupPanel
     bind:departureAirport
@@ -714,13 +736,14 @@
       {formatDuration}
       {formatDistance}
       {cycleDistanceUnit}
-      {distanceUnit}
-      {isPlaying}
-      {togglePlayback}
-      bind:playSpeed
-      {t}
-      {onSliderInput}
-      {formatTime}
+	      {distanceUnit}
+	      {isPlaying}
+	      {togglePlayback}
+	      playSpeed={playSpeed}
+	      setPlaySpeed={(speed) => setPlaybackSpeed(speed, 'user')}
+	      {t}
+	      {onSliderInput}
+	      {formatTime}
       {formatDate}
     />
 

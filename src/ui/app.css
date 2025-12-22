@@ -51,7 +51,13 @@ header {
   gap: 12px;
 }
 
-.btn.about-trigger {
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn.header-trigger {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
@@ -60,13 +66,13 @@ header {
   color: #cbd5e1;
 }
 
-.btn.about-trigger:hover {
+.btn.header-trigger:hover {
   border-color: rgba(79, 209, 255, 0.35);
   background: rgba(79, 209, 255, 0.1);
   color: #e6edf5;
 }
 
-.btn.about-trigger:focus-visible {
+.btn.header-trigger:focus-visible {
   outline: 2px solid rgba(79, 209, 255, 0.55);
   outline-offset: 3px;
 }

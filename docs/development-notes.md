@@ -78,6 +78,19 @@ Autoplay query params:
 - `autoplaySpeed=1|2|4` sets pace (invalid values are ignored).
 - `autoplayDelayMs` delays the start (clamped to `0..10000`).
 
+Share flight query params:
+
+- `from=<code|id>` and `to=<code|id>` select airports (`IATA`, `ICAO`, `ident`, or numeric airport `id`).
+- `depart=YYYY-MM-DDTHH:mm` is the local departure date/time at the departure airport.
+- `arrive=YYYY-MM-DDTHH:mm` is the local arrival date/time at the arrival airport.
+- Optional: `autoplay=true` and `autoplaySpeed=1|2|4` (share-only and not persisted).
+
+Notes:
+
+- Share links always start at `t=0` (they do not encode slider position).
+- Auto-estimate is not encoded in the link; each user’s saved preference applies.
+- Even if auto-estimate is enabled, the arrival time from the link is treated as authoritative until the user changes route/departure (same behavior as the default `AMS → GRU` configuration).
+
 Potential next refactors:
 
 - Move more state/logic out of `src/ui/App.svelte` into dedicated modules/stores as needed.

@@ -63,8 +63,8 @@
 
       <h3>Privacy</h3>
       <p>
-        No accounts. No tracking. Everything runs in your browser, and a few preferences are saved in local storage (pace,
-        units, auto-estimate).
+        No accounts. No tracking. Everything runs in your browser. 100% open source. No server-side code. A few
+        preferences are saved in local storage (pace, units, auto-estimate).
       </p>
 
       <h3>Credit</h3>

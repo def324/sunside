@@ -28,6 +28,7 @@ As of December 2025, sunflight.org appears to be unavailable. If/when it comes b
 - Play or scrub a timeline to see the aircraft move along the great-circle route.
 - Visualize the global day/night terminator, a subtle civil twilight band, and the subsolar sun marker.
 - See aircraft-local daylight state and relative sun direction (when visible).
+- Share the current flight via a URL (optional autoplay and speed).
 - Remembers a few UI preferences in local storage (auto-estimate, distance units, pace).
 
 On first load, the app defaults to `AMS → GRU` on today’s date (`11:00` departure, `19:00` arrival; local times). Auto-estimate is enabled, but the initial arrival time is a curated example; changing route/departure will apply auto-estimate.
