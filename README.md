@@ -14,10 +14,7 @@ https://def324.github.io/sunside/
 
 ## Demo
 
-<picture>
-  <source srcset="docs/images/demo.webp" type="image/webp" />
-  <img src="docs/images/demo.gif" alt="Sunside demo" width="1250" />
-</picture>
+![Sunside demo](docs/images/demo.webp)
 
 ## Credit / inspiration
 
