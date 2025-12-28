@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://def324.github.io/sunside/sitemap.xml
