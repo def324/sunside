@@ -10,8 +10,9 @@
 	  import { buildAirportSearchIndex, searchAirports } from '../core/airportSearch';
 	  import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
 	  import { computeDayNightOverlay } from '../core/daynight';
-			  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
+	  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
 	  import { computeFlightSunSummary, type FlightSunSummary, type SunSummaryBucket, type SunSummaryUnit } from '../core/sunSummary';
+	  import { computeTimeZonesForSamples } from '../core/timezone';
 	  import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
 	  import { parseAutoplayParams, parseShareFlightParams } from './urlParams';
 	  import type { AirportRecord, DistanceUnit, PlaybackSpeed, TimelineInfo } from './types';
@@ -93,6 +94,7 @@
   let error = '';
   let flightPlan = null as ReturnType<typeof createFlightPlan> | null;
   let routeSamples = [] as ReturnType<typeof sampleFlight>;
+	  let routeTimeZones = [] as string[];
 	  let flightSunSummary: FlightSunSummary | null = null;
 	  let t = 0;
 	  let sliderValue = 0;
@@ -208,6 +210,7 @@
 	    error = '';
 	    flightPlan = null;
 	    routeSamples = [];
+	    routeTimeZones = [];
 	    routeSegments = [];
 	    flightSunSummary = null;
 	    try {
@@ -218,6 +221,11 @@
 	      const plan = createFlightPlan(toAirport(departureAirport), toAirport(arrivalAirport), depZ, arrZ);
 	      flightPlan = plan;
 	      routeSamples = sampleFlight(plan, ROUTE_SAMPLE_COUNT, { width: MAP_WIDTH, height: MAP_HEIGHT });
+	      routeTimeZones = computeTimeZonesForSamples(routeSamples, {
+	        departureTimeZone: departureAirport.tz,
+	        arrivalTimeZone: arrivalAirport.tz,
+	        fallbackTimeZone: 'utc'
+	      });
 	      flightSunSummary = computeFlightSunSummary(plan);
 	      const projected = routeSamples.map((s) => s.projected!).filter(Boolean);
 	      routeSegments = splitPolylineAtMapSeam(projected, MAP_WIDTH)
@@ -619,11 +627,6 @@
 		    return `${sign}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 		  }
 
-  function approxLocalOffsetMinutes(lonDeg: number): number {
-    const rawMinutes = (lonDeg / 15) * 60;
-    return Math.round(rawMinutes / 15) * 15;
-  }
-
   function formatTime(ms: number, zone: string): string {
     return DateTime.fromMillis(ms, { zone }).toLocaleString(DateTime.TIME_SIMPLE);
   }
@@ -653,11 +656,14 @@
       const utcMillis = currentSample.utcMillis;
       const utcDate = formatDate(utcMillis, 'utc');
       const utcTime = formatTime(utcMillis, 'utc');
-      const offsetMinutes = approxLocalOffsetMinutes(currentSample.location.lon);
-      const localTime = DateTime.fromMillis(utcMillis, { zone: 'utc' })
-        .plus({ minutes: offsetMinutes })
-        .toLocaleString(DateTime.TIME_SIMPLE);
-      const localOffset = utcOffsetLabel(offsetMinutes);
+      const localZone =
+        routeTimeZones.length > 0
+          ? routeTimeZones[Math.min(routeTimeZones.length - 1, Math.max(0, Math.round(currentSample.t * (routeTimeZones.length - 1))))] ??
+            'utc'
+          : 'utc';
+      const localDt = DateTime.fromMillis(utcMillis, { zone: localZone });
+      const localTime = localDt.isValid ? localDt.toLocaleString(DateTime.TIME_SIMPLE) : formatTime(utcMillis, 'utc');
+      const localOffset = localDt.isValid ? utcOffsetLabel(localDt.offset) : '+00:00';
 	      const elapsedMinutes = Math.max(0, Math.round((utcMillis - flightPlan.departureUtc) / 60000));
 	      const remainingMinutes = Math.max(0, flightPlan.durationMinutes - elapsedMinutes);
 	      const status = currentSample.sun.status;

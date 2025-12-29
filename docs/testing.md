@@ -22,6 +22,7 @@ Note: `npm test` runs Vitest in watch mode and keeps the process running; use `n
 
 - `tests/geo.test.ts` – great-circle + projection sanity checks (including seam splitting).
 - `tests/time.test.ts` – time zone conversion and duration helpers.
+- `tests/timezone.test.ts` – time zone lookup by coordinate (including DST and non-hour offsets).
 - `tests/airportSearch.test.ts` – ranked airport search for the typeahead UI.
 - `tests/sun.test.ts` – SunCalc wrapper, subsolar point, and terminator sampling helpers.
 - `tests/daynight.test.ts` – day/night overlay paths (bounds, solstices, seam/equinox edge cases).
