@@ -20,6 +20,7 @@ UI-agnostic, testable TypeScript:
 - `sun.ts` – SunCalc wrapper plus subsolar-point helpers.
 - `daynight.ts` – global day/night overlay (terminator + SVG paths).
 - `flight.ts` – flight plan construction + timeline sampling (including sun side-of-plane classification and duration estimates).
+- `sunSummary.ts` – aggregates per-sample sun side/status into stable summaries for the UI (direction buckets + daylight buckets), with rounding rules designed to keep tiny-but-nonzero buckets visible.
 
 ### 2. Runtime data/assets
 
@@ -62,6 +63,7 @@ User-facing features include:
   - Optional: auto-estimate arrival time from great-circle distance (rounded to 30 minutes).
 - Timeline controls (play/pause, pace selection, and scrubbing).
   - Timeline header shows route, duration, and distance (defaults to km/mi by locale; click to cycle km/mi/nmi).
+  - Timeline also includes a sunlight summary widget (direction + day/twilight/night breakdown with a compass rose); clicking the summary toggles units (% vs time).
 - SVG map rendering:
   - base world map (`public/map.svg`)
   - route polyline(s) (great circle, split at the antimeridian seam)
@@ -85,12 +87,13 @@ Vitest unit tests cover:
 1. User selects departure/arrival airports and local times.
 2. `time.ts` converts local inputs to UTC; `flight.ts` builds a validated `FlightPlan`.
 3. `flight.ts` samples the flight timeline (positions + per-sample sun status/side).
-4. The timeline slider selects the current sample; the aircraft marker updates.
-5. For the current timestamp, `daynight.ts` computes:
+4. `sunSummary.ts` computes aggregate summaries across the whole flight (used by the compass-rose + labels).
+5. The timeline slider selects the current sample; the aircraft marker updates.
+6. For the current timestamp, `daynight.ts` computes:
    - the subsolar point (sun marker)
    - the day/night terminator curve
    - SVG paths for day and night regions
-6. `MapPanel.svelte` renders all layers into a single SVG (driven by `App.svelte` state).
+7. `MapPanel.svelte` renders all layers into a single SVG (driven by `App.svelte` state).
 
 ## Day/night model and “sun” marker
 

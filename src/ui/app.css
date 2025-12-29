@@ -356,6 +356,226 @@ h2 {
   background: rgba(79, 209, 255, 0.08);
 }
 
+.sunlight-card {
+  padding: 6px 8px;
+}
+
+.sunlight-layout {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.sunlight-positions,
+.sunlight-daylight {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: default;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sunlight-positions {
+  text-align: left;
+}
+
+.sunlight-daylight {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.sunlight-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.seg-left {
+  --seg-color: rgba(79, 209, 255, 0.9);
+  --seg-bg: rgba(79, 209, 255, 0.1);
+  --seg-glow: rgba(79, 209, 255, 0.25);
+}
+
+.seg-right {
+  --seg-color: rgba(45, 212, 191, 0.85);
+  --seg-bg: rgba(45, 212, 191, 0.1);
+  --seg-glow: rgba(45, 212, 191, 0.22);
+}
+
+.seg-ahead {
+  --seg-color: rgba(255, 209, 102, 0.9);
+  --seg-bg: rgba(255, 209, 102, 0.1);
+  --seg-glow: rgba(255, 209, 102, 0.22);
+}
+
+.seg-behind {
+  --seg-color: rgba(167, 139, 250, 0.88);
+  --seg-bg: rgba(167, 139, 250, 0.1);
+  --seg-glow: rgba(167, 139, 250, 0.22);
+}
+
+.seg-day {
+  --seg-color: rgba(255, 209, 102, 0.9);
+  --seg-bg: rgba(255, 209, 102, 0.1);
+  --seg-glow: rgba(255, 209, 102, 0.22);
+}
+
+.seg-twilight {
+  --seg-color: rgba(251, 113, 133, 0.88);
+  --seg-bg: rgba(251, 113, 133, 0.1);
+  --seg-glow: rgba(251, 113, 133, 0.22);
+}
+
+.seg-night {
+  --seg-color: rgba(148, 163, 184, 0.42);
+  --seg-bg: rgba(148, 163, 184, 0.08);
+  --seg-glow: rgba(148, 163, 184, 0.18);
+}
+
+
+.sun-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #cbd5e1;
+  padding: 2px 4px;
+  border-radius: 8px;
+}
+
+.sun-token.active {
+  background: var(--seg-bg, rgba(79, 209, 255, 0.12));
+  box-shadow: inset 0 0 0 1px var(--seg-color, rgba(79, 209, 255, 0.35));
+  color: #fff;
+}
+
+.sun-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--seg-color, rgba(203, 213, 225, 0.9));
+  flex: 0 0 auto;
+}
+
+.sun-token-value {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: #e6edf5;
+}
+
+.sun-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.25);
+}
+
+.sun-status.status-day {
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.35);
+}
+
+.sun-status.status-twilight {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35);
+}
+
+.sun-status.status-night {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.25);
+}
+
+.sun-rose {
+  width: 88px;
+  height: 88px;
+  flex: 0 0 auto;
+  margin: -6px -4px;
+  --sun-rose-plane-color: rgba(148, 163, 184, 0.78);
+}
+
+.sun-rose.status-day {
+  --sun-rose-plane-color: rgba(255, 209, 102, 0.6);
+}
+
+.sun-rose.status-twilight {
+  --sun-rose-plane-color: rgba(251, 113, 133, 0.6);
+}
+
+.sun-rose.status-night {
+  --sun-rose-plane-color: rgba(148, 163, 184, 0.42);
+}
+
+.sun-rose-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+
+.sun-rose-track,
+.sun-rose-arc {
+  fill: none;
+  stroke: var(--seg-color, rgba(148, 163, 184, 0.5));
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.sun-rose-track {
+  stroke-opacity: 0.18;
+}
+
+.sun-rose-track.empty,
+.sun-rose-arc.empty {
+  stroke: rgba(148, 163, 184, 0.5);
+}
+
+.sun-rose-arc {
+  stroke-opacity: 0.9;
+  stroke-dasharray: 0 100;
+  transition: stroke-opacity 0.15s ease, filter 0.15s ease;
+}
+
+.sun-rose-arc.active {
+  stroke-opacity: 1;
+  filter:
+    drop-shadow(0 0 3px var(--seg-color, rgba(79, 209, 255, 0.9)))
+    drop-shadow(0 0 8px var(--seg-color, rgba(79, 209, 255, 0.7)))
+    drop-shadow(0 0 12px var(--seg-glow, rgba(79, 209, 255, 0.5)));
+}
+
+.sun-rose-plane path {
+  fill: var(--sun-rose-plane-color, rgba(148, 163, 184, 0.85));
+  stroke: none;
+}
+
+@media (max-width: 360px) {
+  .sunlight-summary {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .sun-rose {
+    width: 72px;
+    height: 72px;
+    margin: 0;
+  }
+}
+
 label {
   display: flex;
   flex-direction: column;

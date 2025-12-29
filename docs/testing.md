@@ -26,6 +26,8 @@ Note: `npm test` runs Vitest in watch mode and keeps the process running; use `n
 - `tests/sun.test.ts` – SunCalc wrapper, subsolar point, and terminator sampling helpers.
 - `tests/daynight.test.ts` – day/night overlay paths (bounds, solstices, seam/equinox edge cases).
 - `tests/flight.test.ts` – flight plan validation, sampling, duration estimates, and sun side-of-plane logic.
+- `tests/sunSummary.test.ts` – sunlight summary bucketing (direction + daylight) and rounding.
+- `tests/urlParams.test.ts` – share + autoplay URL param parsing (UI integration glue).
 - `tests/prepare-airports.test.ts` – airport CSV filtering/normalization helpers.
 - `tests/prepare-map.test.ts` – map dataset preparation helpers.
 

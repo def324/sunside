@@ -11,6 +11,7 @@
 	  import { createFlightPlan, estimateFlightDurationMinutes, sampleFlight, sampleFlightAt, type Airport } from '../core/flight';
 	  import { computeDayNightOverlay } from '../core/daynight';
 			  import { createGreatCirclePath, splitPolylineAtMapSeam } from '../core/geo';
+	  import { computeFlightSunSummary, type FlightSunSummary, type SunSummaryBucket, type SunSummaryUnit } from '../core/sunSummary';
 	  import { toZonedDateTime, type LocalDateTimeInput } from '../core/time';
 	  import { parseAutoplayParams, parseShareFlightParams } from './urlParams';
 	  import type { AirportRecord, DistanceUnit, PlaybackSpeed, TimelineInfo } from './types';
@@ -19,6 +20,7 @@
     autoEstimateArrival?: boolean;
     distanceUnitOverride?: DistanceUnit | null;
     playSpeed?: PlaybackSpeed;
+    sunSummaryUnit?: SunSummaryUnit;
   };
 
   const PREFS_STORAGE_KEY = 'sunside:prefs:v1';
@@ -42,6 +44,9 @@
 
       const ps = obj.playSpeed;
       if (ps === 1 || ps === 2 || ps === 4) prefs.playSpeed = ps;
+
+      const su = obj.sunSummaryUnit;
+      if (su === 'percent' || su === 'time') prefs.sunSummaryUnit = su;
 
       return prefs;
     } catch {
@@ -88,11 +93,13 @@
   let error = '';
   let flightPlan = null as ReturnType<typeof createFlightPlan> | null;
   let routeSamples = [] as ReturnType<typeof sampleFlight>;
+	  let flightSunSummary: FlightSunSummary | null = null;
 	  let t = 0;
 	  let sliderValue = 0;
 	  let routeSegments = [] as string[];
 	  let currentProjected: { x: number; y: number } | null = null;
   let currentSample: ReturnType<typeof sampleFlight>[number] | null = null;
+	  let currentSunBucket: SunSummaryBucket | null = null;
   let sunProjected: { x: number; y: number } | null = null;
   let dayPath = '';
   let twilightPath = '';
@@ -107,6 +114,7 @@
 			  let isPlaying = false;
 			  let playSpeedPref: PlaybackSpeed = persistedPrefs.playSpeed ?? 2;
 			  let playSpeed: PlaybackSpeed = playSpeedPref;
+			  let sunSummaryUnit: SunSummaryUnit = persistedPrefs.sunSummaryUnit ?? 'percent';
 			  let playRaf: number | null = null;
 			  let lastPlayTs: number | null = null;
 			  let showAbout = false;
@@ -201,6 +209,7 @@
 	    flightPlan = null;
 	    routeSamples = [];
 	    routeSegments = [];
+	    flightSunSummary = null;
 	    try {
       const depLocal = parseLocal(departureDate, departureTime);
       const arrLocal = parseLocal(arrivalDate, arrivalTime);
@@ -209,6 +218,7 @@
 	      const plan = createFlightPlan(toAirport(departureAirport), toAirport(arrivalAirport), depZ, arrZ);
 	      flightPlan = plan;
 	      routeSamples = sampleFlight(plan, ROUTE_SAMPLE_COUNT, { width: MAP_WIDTH, height: MAP_HEIGHT });
+	      flightSunSummary = computeFlightSunSummary(plan);
 	      const projected = routeSamples.map((s) => s.projected!).filter(Boolean);
 	      routeSegments = splitPolylineAtMapSeam(projected, MAP_WIDTH)
 	        .filter((seg) => seg.length >= 2)
@@ -229,6 +239,14 @@
     } else {
       currentSample = sampleFlightAt(flightPlan, t, { width: MAP_WIDTH, height: MAP_HEIGHT });
       currentProjected = currentSample.projected ?? null;
+    }
+  }
+
+  $: {
+    if (!currentSample) {
+      currentSunBucket = null;
+    } else {
+      currentSunBucket = currentSample.sun.status === 'night' ? 'night' : (currentSample.sun.side as SunSummaryBucket);
     }
   }
 
@@ -539,6 +557,7 @@
 					    autoEstimateArrival: boolean;
 					    distanceUnitOverride: DistanceUnit | null;
 					    playSpeed: PlaybackSpeed;
+					    sunSummaryUnit: SunSummaryUnit;
 					  };
 
 				  let prefsReady = false;
@@ -565,15 +584,24 @@
 				    }, 150);
 				  }
 
-					  prefsLastJson = JSON.stringify({ autoEstimateArrival, distanceUnitOverride, playSpeed: playSpeedPref });
+					  prefsLastJson = JSON.stringify({
+					    autoEstimateArrival,
+					    distanceUnitOverride,
+					    playSpeed: playSpeedPref,
+					    sunSummaryUnit
+					  });
 					  prefsReady = true;
 
 					  $: if (prefsReady)
-					    schedulePrefsSave({ autoEstimateArrival, distanceUnitOverride, playSpeed: playSpeedPref });
+					    schedulePrefsSave({ autoEstimateArrival, distanceUnitOverride, playSpeed: playSpeedPref, sunSummaryUnit });
 
 				  function cycleDistanceUnit() {
 				    const next: DistanceUnit = distanceUnit === 'km' ? 'mi' : distanceUnit === 'mi' ? 'nmi' : 'km';
 				    distanceUnitOverride = next;
+				  }
+
+				  function cycleSunSummaryUnit() {
+				    sunSummaryUnit = sunSummaryUnit === 'percent' ? 'time' : 'percent';
 				  }
 
 			  function formatDistance(meters: number, unit: DistanceUnit): string {
@@ -730,6 +758,10 @@
     <TimelinePanel
       {timelineInfo}
       {flightPlan}
+      sunSummary={flightSunSummary}
+      {sunSummaryUnit}
+      {cycleSunSummaryUnit}
+      {currentSunBucket}
       {departureAirport}
       {arrivalAirport}
       {airportCode}

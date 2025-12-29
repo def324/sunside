@@ -45,6 +45,10 @@ Current UI supports:
 - Great-circle route rendering.
 - Timeline play/scrub controls that update aircraft position and sun/day-night state.
 - Timeline header shows route, duration, and distance (defaults to km/mi by locale; click to cycle km/mi/nmi).
+- Timeline sunlight summary widget:
+  - Direction breakdown (left/right/ahead/behind) with a compass rose.
+  - Daylight breakdown (day/twilight/night).
+  - Click the summary to toggle units (% vs time); tiny-but-nonzero buckets are rounded up so they remain visible.
 - Global day/night overlay + sun marker that updates with time.
 - Pan/zoom on the map (wheel/pinch + drag + zoom buttons).
 - The UI is split into coarse presentational panels under `src/ui/components/`, with global styles in `src/ui/app.css`.
