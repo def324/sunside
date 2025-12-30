@@ -47,14 +47,16 @@ main.page {
 header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .header-actions {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  margin-left: auto;
 }
 
 .btn.header-trigger {
@@ -889,11 +891,6 @@ image {
 }
 
 @media (max-width: 640px) {
-  header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .flight-setup-grid {
     grid-template-columns: 1fr;
     gap: 10px;
