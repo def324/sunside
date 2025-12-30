@@ -173,7 +173,44 @@
                 class:status-night={timelineInfo.status === 'night'}
                 aria-hidden="true"
               >
-                <svg class="sun-rose-svg" viewBox="0 0 100 100">
+                <svg class="sun-rose-svg" viewBox="0 0 100 100" overflow="visible">
+                  <defs>
+                    <filter
+                      id="sun-rose-glow"
+                      filterUnits="userSpaceOnUse"
+                      primitiveUnits="userSpaceOnUse"
+                      x="-80"
+                      y="-80"
+                      width="260"
+                      height="260"
+                      color-interpolation-filters="sRGB"
+                    >
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur1" />
+                      <feComponentTransfer in="blur1" result="glow1">
+                        <feFuncA type="linear" slope="1.6" />
+                      </feComponentTransfer>
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="4.8" result="blur2" />
+                      <feComponentTransfer in="blur2" result="glow2">
+                        <feFuncA type="linear" slope="1" />
+                      </feComponentTransfer>
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="10.5" result="blur3" />
+                      <feComponentTransfer in="blur3" result="glow3">
+                        <feFuncA type="linear" slope="0.6" />
+                      </feComponentTransfer>
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="16" result="blur4" />
+                      <feComponentTransfer in="blur4" result="glow4">
+                        <feFuncA type="linear" slope="0.35" />
+                      </feComponentTransfer>
+                      <feMerge>
+                        <feMergeNode in="glow4" />
+                        <feMergeNode in="glow3" />
+                        <feMergeNode in="glow2" />
+                        <feMergeNode in="glow1" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+
                   <!-- Left arc -->
                   <path
                     class="sun-rose-track seg-left"
@@ -185,6 +222,7 @@
                     class="sun-rose-arc seg-left"
                     class:active={currentSunBucket === 'left'}
                     class:empty={sunSummary.buckets.left.millis <= 0}
+                    filter={currentSunBucket === 'left' ? 'url(#sun-rose-glow)' : undefined}
                     d="M 16 65 A 36 36 0 0 1 16 35"
                     pathLength="100"
                     style={arcFillStyle(sunSummary.buckets.left.fraction)}
@@ -201,6 +239,7 @@
                     class="sun-rose-arc seg-right"
                     class:active={currentSunBucket === 'right'}
                     class:empty={sunSummary.buckets.right.millis <= 0}
+                    filter={currentSunBucket === 'right' ? 'url(#sun-rose-glow)' : undefined}
                     d="M 84 35 A 36 36 0 0 1 84 65"
                     pathLength="100"
                     style={arcFillStyle(sunSummary.buckets.right.fraction)}
@@ -217,6 +256,7 @@
                     class="sun-rose-arc seg-ahead"
                     class:active={currentSunBucket === 'ahead'}
                     class:empty={sunSummary.buckets.ahead.millis <= 0}
+                    filter={currentSunBucket === 'ahead' ? 'url(#sun-rose-glow)' : undefined}
                     d="M 35 16 A 36 36 0 0 1 65 16"
                     pathLength="100"
                     style={arcFillStyle(sunSummary.buckets.ahead.fraction)}
@@ -233,6 +273,7 @@
                     class="sun-rose-arc seg-behind"
                     class:active={currentSunBucket === 'behind'}
                     class:empty={sunSummary.buckets.behind.millis <= 0}
+                    filter={currentSunBucket === 'behind' ? 'url(#sun-rose-glow)' : undefined}
                     d="M 65 84 A 36 36 0 0 1 35 84"
                     pathLength="100"
                     style={arcFillStyle(sunSummary.buckets.behind.fraction)}
