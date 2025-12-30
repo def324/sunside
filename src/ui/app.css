@@ -1,6 +1,6 @@
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   background: #0c1426;
   color: #e6edf5;
   color-scheme: dark;
@@ -658,6 +658,25 @@ input[type='time'] {
 input[type='date']::-webkit-date-and-time-value,
 input[type='time']::-webkit-date-and-time-value {
   text-align: left;
+  font: inherit;
+  font-variant-numeric: proportional-nums;
+}
+
+input[type='date']::-webkit-datetime-edit,
+input[type='time']::-webkit-datetime-edit,
+input[type='date']::-webkit-datetime-edit-fields-wrapper,
+input[type='time']::-webkit-datetime-edit-fields-wrapper,
+input[type='date']::-webkit-datetime-edit-text,
+input[type='time']::-webkit-datetime-edit-text,
+input[type='date']::-webkit-datetime-edit-month-field,
+input[type='date']::-webkit-datetime-edit-day-field,
+input[type='date']::-webkit-datetime-edit-year-field,
+input[type='time']::-webkit-datetime-edit-hour-field,
+input[type='time']::-webkit-datetime-edit-minute-field,
+input[type='time']::-webkit-datetime-edit-second-field,
+input[type='time']::-webkit-datetime-edit-ampm-field {
+  font: inherit;
+  font-variant-numeric: proportional-nums;
 }
 
 input[type='date'],
