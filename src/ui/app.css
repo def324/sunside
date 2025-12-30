@@ -280,6 +280,12 @@ h2 {
   gap: 12px;
 }
 
+@media (max-width: 768px) {
+  .timeline-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
 .timeline-card {
   background: #0d182b;
   border: 1px solid #24344c;
@@ -652,6 +658,11 @@ input[type='time'] {
 
 input[type='date'],
 input[type='time'] {
+  letter-spacing: normal;
+}
+
+input[type='date'],
+input[type='time'] {
   text-align: left;
 }
 
@@ -660,6 +671,7 @@ input[type='time']::-webkit-date-and-time-value {
   text-align: left;
   font: inherit;
   font-variant-numeric: proportional-nums;
+  letter-spacing: normal;
 }
 
 input[type='date']::-webkit-datetime-edit,
@@ -677,6 +689,7 @@ input[type='time']::-webkit-datetime-edit-second-field,
 input[type='time']::-webkit-datetime-edit-ampm-field {
   font: inherit;
   font-variant-numeric: proportional-nums;
+  letter-spacing: normal;
 }
 
 input[type='date'],
