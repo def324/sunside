@@ -287,6 +287,37 @@ h2 {
   padding: 10px;
 }
 
+.timeline-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 14px;
+}
+
+.timeline-time-col {
+  min-width: 0;
+}
+
+.timeline-time-header {
+  color: #9fb0c7;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-time-card .value {
+  margin-top: 4px;
+}
+
+.timeline-time-date {
+  margin-top: 4px;
+  color: #9fb0c7;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .kicker {
   color: #9fb0c7;
   font-size: 12px;

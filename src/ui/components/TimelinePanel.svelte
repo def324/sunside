@@ -113,13 +113,22 @@
     </div>
   {/if}
 
-  {#if timelineInfo}
-    <div class="timeline-cards">
-      <div class="timeline-card">
-        <div class="kicker">{timelineInfo.utcDate}</div>
-        <div class="value">{timelineInfo.utcTime} UTC</div>
-        <div class="sub">Local ≈ {timelineInfo.localTime} (UTC{timelineInfo.localOffset})</div>
-      </div>
+	  {#if timelineInfo}
+	    <div class="timeline-cards">
+	      <div class="timeline-card timeline-time-card">
+	        <div class="timeline-time-grid">
+	          <div class="timeline-time-col">
+	            <div class="timeline-time-header">UTC</div>
+	            <div class="value">{timelineInfo.utcTime}</div>
+	            <div class="timeline-time-date" title={timelineInfo.utcDate}>{timelineInfo.utcDate}</div>
+	          </div>
+	          <div class="timeline-time-col">
+	            <div class="timeline-time-header">Local (UTC{timelineInfo.localOffset})</div>
+	            <div class="value">{timelineInfo.localTime}</div>
+	            <div class="timeline-time-date" title={timelineInfo.localDate}>{timelineInfo.localDate}</div>
+	          </div>
+	        </div>
+	      </div>
 
       <div class="timeline-card sunlight-card">
         {#if sunSummary}

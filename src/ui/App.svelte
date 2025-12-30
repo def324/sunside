@@ -663,6 +663,9 @@
           : 'utc';
       const localDt = DateTime.fromMillis(utcMillis, { zone: localZone });
       const localTime = localDt.isValid ? localDt.toLocaleString(DateTime.TIME_SIMPLE) : formatTime(utcMillis, 'utc');
+      const localDate = localDt.isValid
+        ? localDt.toLocaleString(DateTime.DATE_MED_WITH_WEEKDAY)
+        : formatDate(utcMillis, 'utc');
       const localOffset = localDt.isValid ? utcOffsetLabel(localDt.offset) : '+00:00';
 	      const elapsedMinutes = Math.max(0, Math.round((utcMillis - flightPlan.departureUtc) / 60000));
 	      const remainingMinutes = Math.max(0, flightPlan.durationMinutes - elapsedMinutes);
@@ -673,6 +676,7 @@
 	        routeLabel: `${airportCode(departureAirport)} → ${airportCode(arrivalAirport)}`,
 	        utcDate,
 	        utcTime,
+	        localDate,
 	        localTime,
 	        localOffset,
 	        elapsed: formatDuration(elapsedMinutes),

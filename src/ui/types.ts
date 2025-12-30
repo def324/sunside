@@ -10,6 +10,7 @@ export type TimelineInfo = {
   routeLabel: string;
   utcDate: string;
   utcTime: string;
+  localDate: string;
   localTime: string;
   localOffset: string;
   elapsed: string;
@@ -18,4 +19,3 @@ export type TimelineInfo = {
   statusLabel: string;
   directionLabel: string | null;
 };
-
